@@ -1,0 +1,1 @@
+<x-error-page code="429" title="Trop de requêtes" message="Veuillez patienter quelques instants avant de réessayer." />

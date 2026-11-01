@@ -1,0 +1,1 @@
+<x-error-page code="503" title="Maintenance en cours" message="Le service est momentanément indisponible. Revenez dans quelques minutes." />

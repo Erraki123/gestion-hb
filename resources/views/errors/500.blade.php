@@ -1,0 +1,1 @@
+<x-error-page code="500" title="Erreur du serveur" message="Une erreur inattendue s'est produite. Nos équipes en sont informées." />
