@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\ActivityLogController;
 use App\Http\Controllers\Admin\CommercialController;
 use App\Http\Controllers\CategoryController;
@@ -10,6 +11,7 @@ use App\Http\Controllers\ClientNoteController;
 use App\Http\Controllers\CommissionController;
 use App\Http\Controllers\CommissionRuleController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DeliveryController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PaymentController;
@@ -18,11 +20,17 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\ReceivableController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReturnController;
 use App\Http\Controllers\SearchController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\StockMovementController;
+use App\Http\Controllers\SupplierController;
+use App\Http\Controllers\SupplierInvoiceController;
+use App\Http\Controllers\SupplierPaymentController;
 use App\Http\Controllers\SystemController;
 use App\Http\Controllers\TrashController;
+use App\Http\Controllers\PurchaseOrderController;
+use App\Http\Controllers\GoodsReceiptController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('login'));
@@ -91,13 +99,28 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('orders', [OrderController::class, 'index'])->name('orders.index');
         Route::get('orders/{order}', [OrderController::class, 'show'])->name('orders.show');
         Route::patch('orders/{order}/status', [OrderController::class, 'status'])->name('orders.status');
+        Route::post('orders/{order}/deliveries', [DeliveryController::class, 'storeFromOrder'])->name('orders.deliveries.store');
         Route::post('orders/{order}/invoice', [InvoiceController::class, 'fromOrder'])->name('orders.invoice');
+
+        Route::get('deliveries', [DeliveryController::class, 'index'])->name('deliveries.index');
+        Route::get('deliveries/{delivery}', [DeliveryController::class, 'show'])->name('deliveries.show');
+        Route::put('deliveries/{delivery}', [DeliveryController::class, 'update'])->name('deliveries.update');
+        Route::delete('deliveries/{delivery}', [DeliveryController::class, 'destroy'])->name('deliveries.destroy');
+        Route::post('deliveries/{delivery}/validate', [DeliveryController::class, 'validate'])->name('deliveries.validate');
+        Route::get('deliveries/{delivery}/pdf', [DeliveryController::class, 'pdf'])->name('deliveries.pdf');
 
         // Factures
         Route::resource('invoices', InvoiceController::class)->only(['index', 'show', 'update', 'destroy']);
         Route::post('invoices/{invoice}/issue', [InvoiceController::class, 'issue'])->name('invoices.issue');
         Route::post('invoices/{invoice}/credit', [InvoiceController::class, 'credit'])->name('invoices.credit');
         Route::get('invoices/{invoice}/pdf', [InvoiceController::class, 'pdf'])->name('invoices.pdf');
+
+        Route::get('returns', [ReturnController::class, 'index'])->name('returns.index');
+        Route::post('invoices/{invoice}/returns', [ReturnController::class, 'store'])->name('invoices.returns.store');
+        Route::get('returns/{customerReturn}', [ReturnController::class, 'show'])->name('returns.show');
+        Route::put('returns/{customerReturn}', [ReturnController::class, 'update'])->name('returns.update');
+        Route::delete('returns/{customerReturn}', [ReturnController::class, 'destroy'])->name('returns.destroy');
+        Route::post('returns/{customerReturn}/validate', [ReturnController::class, 'validate'])->name('returns.validate');
 
         // Paiements et créances
         Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
@@ -106,10 +129,29 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('receivables', [ReceivableController::class, 'index'])->name('receivables.index');
     });
 
-    // Admin seulement : annulation et suivi des chèques
+    // Admin seulement : achats, fournisseurs et paiements fournisseurs
     Route::middleware('role:admin')->group(function () {
+        Route::resource('suppliers', SupplierController::class);
+        Route::resource('purchase-orders', PurchaseOrderController::class);
+        Route::post('purchase-orders/{purchaseOrder}/confirm', [PurchaseOrderController::class, 'confirm'])->name('purchase-orders.confirm');
+        Route::post('purchase-orders/{purchaseOrder}/cancel', [PurchaseOrderController::class, 'cancel'])->name('purchase-orders.cancel');
+        Route::get('purchase-orders/{purchaseOrder}/pdf', [PurchaseOrderController::class, 'pdf'])->name('purchase-orders.pdf');
+        Route::post('purchase-orders/{purchaseOrder}/receipts', [GoodsReceiptController::class, 'store'])->name('purchase-orders.receipts.store');
+        Route::get('receipts/{receipt}', [GoodsReceiptController::class, 'show'])->name('receipts.show');
+        Route::put('receipts/{receipt}', [GoodsReceiptController::class, 'update'])->name('receipts.update');
+        Route::delete('receipts/{receipt}', [GoodsReceiptController::class, 'destroy'])->name('receipts.destroy');
+        Route::post('receipts/{receipt}/validate', [GoodsReceiptController::class, 'validate'])->name('receipts.validate');
+        Route::post('receipts/{receipt}/cancel', [GoodsReceiptController::class, 'cancel'])->name('receipts.cancel');
+
+        Route::resource('supplier-invoices', SupplierInvoiceController::class);
+        Route::post('supplier-invoices/{supplierInvoice}/cancel', [SupplierInvoiceController::class, 'cancel'])->name('supplier-invoices.cancel');
+        Route::post('supplier-invoices/{supplierInvoice}/payments', [SupplierPaymentController::class, 'store'])->name('supplier-invoices.payments.store');
+
+        Route::post('supplier-payments/{supplierPayment}/cancel', [SupplierPaymentController::class, 'cancel'])->name('supplier-payments.cancel');
+
         Route::post('payments/{payment}/cancel', [PaymentController::class, 'cancel'])->name('payments.cancel');
         Route::patch('payments/{payment}/cheque', [PaymentController::class, 'cheque'])->name('payments.cheque');
+        Route::post('deliveries/{delivery}/cancel', [DeliveryController::class, 'cancel'])->name('deliveries.cancel');
     });
 
     // Commissions : Admin (gestion) — ⚠️ AVANT le groupe Admin + Commercial,
@@ -153,6 +195,10 @@ Route::middleware(['auth', 'active'])->group(function () {
             ->where(['type' => '[a-z]+', 'id' => '[0-9]+'])->name('trash.restore');
 
         Route::get('activity', [ActivityLogController::class, 'index'])->name('activity.index');
+        Route::get('accounting', [AccountingController::class, 'index'])->name('accounting.index');
+        Route::get('accounting/download', [AccountingController::class, 'download'])
+            ->middleware('throttle:10,1')
+            ->name('accounting.download');
 
         Route::get('settings', [SettingsController::class, 'edit'])->name('settings.edit');
         Route::put('settings', [SettingsController::class, 'update'])->name('settings.update');

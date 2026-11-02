@@ -29,7 +29,14 @@
         @if ($invoice->isDraft()) <div class="draft">BROUILLON</div> @endif
         <div>Date : {{ $invoice->issue_date->format('d/m/Y') }}</div>
         @if ($invoice->due_date) <div>Échéance : {{ $invoice->due_date->format('d/m/Y') }}</div> @endif
-        @if ($invoice->parent) <div>Annule la facture {{ $invoice->parent->number }}</div> @endif
+        @if ($invoice->parent)
+            @php $linkedReturn = \App\Models\CustomerReturn::where('credit_note_id', $invoice->id)->first(); @endphp
+            @if ($invoice->parent->status === 'annulee')
+                <div>Annule la facture {{ $invoice->parent->number }}</div>
+            @else
+                <div>Avoir partiel sur facture N° {{ $invoice->parent->number }} (retour {{ $linkedReturn?->number ?? 'RT-...' }})</div>
+            @endif
+        @endif
     </div>
 
     <p style="margin-top:20px">
@@ -41,14 +48,15 @@
 
     <table>
         <thead>
-            <tr><th>Désignation</th><th>Qté</th><th>Prix HT</th><th>Remise</th><th class="right">Total HT</th></tr>
+            <tr><th>Désignation</th><th>Qté</th><th>Prix HT</th><th>TVA</th><th>Remise</th><th class="right">Total HT</th></tr>
         </thead>
         <tbody>
         @foreach ($invoice->items as $i)
             <tr>
                 <td>{{ $i->name }}<br><small>{{ $i->sku }}</small></td>
                 <td>{{ $i->quantity + 0 }} {{ $i->unit }}</td>
-                <td class="right">{{ number_format($i->unit_price, 2, ',', ' ') }}</td>
+                <td class="right">{{ \App\Support\Money::price($i->unit_price) }}</td>
+                <td>{{ $i->tax_rate + 0 }} %</td>
                 <td>{{ $i->discount_percent + 0 }} %</td>
                 <td class="right">{{ number_format($i->line_total_ht, 2, ',', ' ') }}</td>
             </tr>
@@ -58,7 +66,12 @@
 
     <table class="totals">
         <tr><td>Total HT</td><td class="right">{{ number_format($invoice->subtotal_ht, 2, ',', ' ') }} DH</td></tr>
-        <tr><td>TVA ({{ $invoice->tax_rate + 0 }}%)</td><td class="right">{{ number_format($invoice->tax_amount, 2, ',', ' ') }} DH</td></tr>
+        @foreach (\App\Services\DocumentTotals::breakdown($invoice->items) as $b)
+            <tr>
+                <td>TVA {{ $b['rate'] + 0 }} % (base {{ number_format($b['base'], 2, ',', ' ') }})</td>
+                <td class="right">{{ number_format($b['tax'], 2, ',', ' ') }} DH</td>
+            </tr>
+        @endforeach
         <tr><td><strong>Total TTC</strong></td><td class="right"><strong>{{ number_format($invoice->total_ttc, 2, ',', ' ') }} DH</strong></td></tr>
         @if ($invoice->type === 'facture' && ! $invoice->isDraft())
             <tr><td>Déjà payé</td><td class="right">{{ number_format($invoice->amount_paid, 2, ',', ' ') }} DH</td></tr>

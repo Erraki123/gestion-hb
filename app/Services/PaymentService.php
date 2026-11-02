@@ -27,7 +27,7 @@ class PaymentService
             $amount  = round((float) $data['amount'], 2);
             $balance = $inv->balance();
 
-            if ($amount <= 0 || $amount > $balance + 0.001) {
+            if ($balance <= 0 || $amount <= 0 || $amount > $balance + 0.001) {
                 throw ValidationException::withMessages([
                     'amount' => 'Le montant doit être entre 0,01 et le reste à payer (' . number_format($balance, 2, ',', ' ') . ' DH).',
                 ]);
@@ -108,18 +108,34 @@ class PaymentService
         return $payment;
     }
 
+    public function refreshInvoiceById(int $id): void
+    {
+        $invoice = Invoice::withoutGlobalScopes()->whereKey($id)->first();
+
+        if ($invoice) {
+            $this->refreshInvoice($invoice);
+        }
+    }
+
     /** Recalcul depuis la somme des paiements valides : source de vérité unique */
     private function refreshInvoice(Invoice $inv): void
     {
+        $net = max(0.0, (float) $inv->total_ttc - (float) $inv->creditedAmount());
         $paid = round((float) Payment::withoutGlobalScopes()
             ->where('invoice_id', $inv->id)->where('status', 'valide')->sum('amount'), 2);
 
         $data = ['amount_paid' => $paid];
 
         if (in_array($inv->status, ['emise', 'partiellement_payee', 'payee'], true)) {
-            $data['status'] = $paid >= (float) $inv->total_ttc - 0.005
-                ? 'payee'
-                : ($paid > 0 ? 'partiellement_payee' : 'emise');
+            if ($net <= 0.005 && $paid == 0) {
+                $data['status'] = 'annulee';
+            } elseif ($paid >= $net - 0.005) {
+                $data['status'] = 'payee';
+            } elseif ($paid > 0) {
+                $data['status'] = 'partiellement_payee';
+            } else {
+                $data['status'] = 'emise';
+            }
         }
 
         $inv->update($data);

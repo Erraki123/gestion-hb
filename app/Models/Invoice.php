@@ -6,9 +6,10 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use App\Models\Concerns\LogsActivity;
+
 class Invoice extends Model
 {
-    use SoftDeletes , LogsActivity;
+    use SoftDeletes, LogsActivity;
 
     protected $fillable = [
         'number', 'type', 'parent_id', 'order_id', 'client_id', 'commercial_id', 'status',
@@ -21,7 +22,6 @@ class Invoice extends Model
         return ['issue_date' => 'date', 'due_date' => 'date'];
     }
 
-    // ⭐ Le commercial ne voit que ses factures
     protected static function booted(): void
     {
         static::addGlobalScope('owner', function (Builder $builder) {
@@ -38,6 +38,12 @@ class Invoice extends Model
     public function items()      { return $this->hasMany(InvoiceItem::class); }
     public function parent()     { return $this->belongsTo(Invoice::class, 'parent_id'); }
     public function credit()     { return $this->hasOne(Invoice::class, 'parent_id'); }
+    public function payments()   { return $this->hasMany(Payment::class)->latest('id'); }
+
+    public static function partialCredits(): Builder
+    {
+        return static::query()->partialCredits();
+    }
 
     public function scopeOverdue(Builder $q): Builder
     {
@@ -46,11 +52,31 @@ class Invoice extends Model
             ->whereDate('due_date', '<', today());
     }
 
+    public function scopePartialCredits(Builder $q): Builder
+    {
+        return $q->where('type', 'avoir')
+            ->where('status', 'emise')
+            ->whereHas('parent', fn ($parentQuery) => $parentQuery->where('status', '!=', 'annulee'));
+    }
+
     public function isDraft(): bool { return $this->status === 'brouillon'; }
+
+    public function creditedAmount(): float
+    {
+        return round((float) static::where('parent_id', $this->id)
+            ->where('type', 'avoir')
+            ->where('status', 'emise')
+            ->sum('total_ttc'), 2);
+    }
 
     public function balance(): float
     {
-        return round((float) $this->total_ttc - (float) $this->amount_paid, 2);
+        return round((float) $this->total_ttc - (float) $this->creditedAmount() - (float) $this->amount_paid, 2);
+    }
+
+    public function creditDue(): float
+    {
+        return max(0.0, -$this->balance());
     }
 
     public function isOverdue(): bool
@@ -69,8 +95,4 @@ class Invoice extends Model
     public function title(): string { return $this->type === 'avoir' ? 'Avoir' : 'Facture'; }
 
     public function displayNumber(): string { return $this->number ?? 'Brouillon #' . $this->id; }
-    public function payments()
-{
-    return $this->hasMany(Payment::class)->latest('id');
-}
 }

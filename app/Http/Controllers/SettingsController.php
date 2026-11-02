@@ -23,6 +23,8 @@ class SettingsController extends Controller
             'quote_validity_days' => Setting::get('quote_validity_days', config('commerce.quote_validity_days')),
             'default_tax_rate'    => Setting::get('default_tax_rate', config('commerce.tax_rate')),
             'price_entry_mode'    => Setting::priceMode(),
+            'stock_deduction'     => Setting::get('stock_deduction', 'order'),
+            'purchase_cost_method' => Setting::get('purchase_cost_method', 'average'),
             'commission_base'     => Setting::get('commission_base', config('commerce.commission_base')),
         ];
 
@@ -45,6 +47,8 @@ class SettingsController extends Controller
             'tax_rates'           => ['required', 'string', 'max:100'],
             'default_tax_rate'    => ['required', 'numeric', 'min:0', 'max:100'],
             'price_entry_mode'    => ['required', 'in:ht,ttc'],
+            'stock_deduction'     => ['required', 'in:order,delivery'],
+            'purchase_cost_method' => ['required', 'in:average,last'],
             'commission_base'     => ['required', 'in:ttc,ht'],
         ]);
 
@@ -79,6 +83,8 @@ class SettingsController extends Controller
             'tax_rates'           => json_encode($rates),
             'default_tax_rate'    => (float) $data['default_tax_rate'],
             'price_entry_mode'    => $data['price_entry_mode'],
+            'stock_deduction'     => $data['stock_deduction'],
+            'purchase_cost_method' => $data['purchase_cost_method'],
             'commission_base'     => $data['commission_base'],
         ];
 

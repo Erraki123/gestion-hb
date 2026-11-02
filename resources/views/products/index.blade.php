@@ -68,7 +68,10 @@
                             </div>
                         </td>
                         <td class="p-4">{{ $p->category?->name ?? '—' }}</td>
-                        <td class="p-4 font-medium text-gray-900">{{ number_format($p->sale_price, 2, ',', ' ') }} DH</td>
+                        <td class="p-3">
+                            {{ number_format($p->sale_price, 2, ',', ' ') }} HT
+                            <div class="text-xs text-gray-500">{{ number_format($p->priceTtc(), 2, ',', ' ') }} TTC · TVA {{ $p->tax_rate + 0 }} %</div>
+                        </td>
                         <td class="p-4">
                             <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs {{ $p->isLowStock() ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' }}">
                                 <span class="h-1.5 w-1.5 rounded-full {{ $p->isLowStock() ? 'bg-red-500' : 'bg-green-500' }}"></span>

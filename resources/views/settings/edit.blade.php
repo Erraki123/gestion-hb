@@ -59,6 +59,22 @@
                     <p class="text-xs text-gray-500 mt-1">Changer ce mode ne modifie aucun prix existant. Le prix d'achat reste toujours en HT.</p>
                 </div>
                 <div>
+                    <x-input-label for="stock_deduction" value="Moment de déduction du stock *" />
+                    <select id="stock_deduction" name="stock_deduction" class="block w-full border-gray-300 rounded">
+                        <option value="order" @selected(old('stock_deduction', $v['stock_deduction']) === 'order')>Commande confirmée : le stock quitte au moment de la confirmation</option>
+                        <option value="delivery" @selected(old('stock_deduction', $v['stock_deduction']) === 'delivery')>Bon de livraison : le stock quitte lors de la validation du bon</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">Le changement est sûr : chaque commande garde son propre indicateur de stock déjà déduit.</p>
+                </div>
+                <div>
+                    <x-input-label for="purchase_cost_method" value="Méthode de coût d'achat *" />
+                    <select id="purchase_cost_method" name="purchase_cost_method" class="block w-full border-gray-300 rounded">
+                        <option value="average" @selected(old('purchase_cost_method', $v['purchase_cost_method']) === 'average')>Average : coût moyen pondéré</option>
+                        <option value="last" @selected(old('purchase_cost_method', $v['purchase_cost_method']) === 'last')>Last : dernier coût d'achat</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">Le coût moyen ou le dernier coût est utilisé lors de chaque réception fournisseur.</p>
+                </div>
+                <div>
                     <x-input-label for="commission_base" value="Base de calcul des commissions *" />
                     <select id="commission_base" name="commission_base" class="block w-full border-gray-300 rounded">
                         <option value="ttc" @selected(old('commission_base', $v['commission_base']) === 'ttc')>Montant TTC</option>

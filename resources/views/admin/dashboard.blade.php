@@ -36,6 +36,11 @@
             <x-stat-card label="Commissions versées" :value="$f($com_paid)" :href="route('commissions.payouts')" tone="green" />
         </div>
 
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+            <x-stat-card label="Dettes fournisseurs" :value="$f($suppliers_due ?? 0)" :href="route('supplier-invoices.index')" tone="red" />
+            <x-stat-card label="Dettes fournisseurs en retard" :value="$f($suppliers_overdue ?? 0)" :href="route('supplier-invoices.index')" tone="yellow" />
+        </div>
+
         @include('dashboard._charts')
 
         {{-- Résultats par commercial --}}

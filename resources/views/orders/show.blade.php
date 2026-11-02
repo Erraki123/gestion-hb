@@ -63,6 +63,58 @@
                     <div class="mt-1 text-sm font-medium"><a class="text-indigo-600" href="{{ route('quotes.show', $order->quote) }}">{{ $order->quote->number }}</a></div>
                 </div>
             @endif
+            <div>
+                <div class="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Livraison</div>
+                <div class="mt-1 text-sm font-medium text-gray-900"><x-status-badge :status="$order->deliveryStatus()" /></div>
+            </div>
+        </div>
+
+        <div class="panel p-6">
+            <div class="mb-4 flex items-center justify-between gap-3">
+                <h3 class="font-semibold text-gray-900">Livraison</h3>
+                @if ($order->status === 'confirmee' && $order->items->contains(fn ($item) => $item->remainingQuantity() > 0))
+                    <form method="POST" action="{{ route('orders.deliveries.store', $order) }}">
+                        @csrf
+                        <button class="px-3 py-2 bg-gold-500 text-gray-900 rounded">Créer un bon de livraison</button>
+                    </form>
+                @endif
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead class="text-left">
+                        <tr>
+                            <th class="p-3">Produit</th>
+                            <th class="p-3">Commandé</th>
+                            <th class="p-3">Livré</th>
+                            <th class="p-3">Restant</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach ($order->items as $item)
+                        <tr class="border-t">
+                            <td class="p-3">{{ $item->name }}</td>
+                            <td class="p-3">{{ number_format($item->quantity, 2, ',', ' ') }} {{ $item->unit }}</td>
+                            <td class="p-3">{{ number_format($item->deliveredQuantity(), 2, ',', ' ') }} {{ $item->unit }}</td>
+                            <td class="p-3">{{ number_format($item->remainingQuantity(), 2, ',', ' ') }} {{ $item->unit }}</td>
+                        </tr>
+                    @endforeach
+                    </tbody>
+                </table>
+            </div>
+            @if ($order->deliveries->isNotEmpty())
+                <div class="mt-6">
+                    <h4 class="mb-2 font-medium text-gray-900">Bons de livraison</h4>
+                    <ul class="space-y-2">
+                        @foreach ($order->deliveries as $delivery)
+                            <li class="flex items-center justify-between gap-3 rounded border border-gray-200 p-2">
+                                <span>{{ $delivery->displayNumber() }} <x-status-badge :status="$delivery->status" /></span>
+                                <span class="text-sm text-gray-500">{{ $delivery->delivery_date ? $delivery->delivery_date->format('d/m/Y') : '—' }}</span>
+                                <a href="{{ route('deliveries.show', $delivery) }}" class="act">Voir</a>
+                            </li>
+                        @endforeach
+                    </ul>
+                </div>
+            @endif
         </div>
 
         @include('quotes._lines', ['doc' => $order])

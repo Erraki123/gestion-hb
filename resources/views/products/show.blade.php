@@ -30,7 +30,6 @@
                 @php
                     $facts = [
                         'Catégorie' => $product->category?->name ?? '—',
-                        'Prix de vente' => number_format($product->sale_price, 2, ',', ' ') . ' DH',
                     ];
                     if (auth()->user()->isAdmin()) {
                         $facts['Prix d\'achat'] = number_format($product->purchase_price, 2, ',', ' ') . ' DH';
@@ -44,6 +43,13 @@
                         <div class="mt-1 font-medium text-gray-900">{{ $v }}</div>
                     </div>
                 @endforeach
+                <div class="col-span-full">
+                    <div class="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Prix de vente</div>
+                    <div class="mt-1 font-medium text-gray-900">
+                        {{ number_format($product->sale_price, 2, ',', ' ') }} HT · {{ number_format($product->priceTtc(), 2, ',', ' ') }} TTC
+                        (TVA {{ $product->tax_rate + 0 }} %)
+                    </div>
+                </div>
                 <div>
                     <div class="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Stock</div>
                     <span class="mt-1 inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs {{ $product->isLowStock() ? 'bg-red-100 text-red-800' : 'bg-green-100 text-green-800' }}">

@@ -9,6 +9,7 @@ use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Product;
 use App\Models\Quote;
+use App\Models\Supplier;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -21,6 +22,7 @@ class TrashController extends Controller
         'categories' => ['model' => Category::class, 'label' => 'Catégories'],
         'quotes'     => ['model' => Quote::class,    'label' => 'Devis'],
         'orders'     => ['model' => Order::class,    'label' => 'Commandes'],
+        'suppliers'  => ['model' => Supplier::class, 'label' => 'Fournisseurs'],
         'invoices'   => ['model' => Invoice::class,  'label' => 'Factures (brouillons)'],
         'users'      => ['model' => User::class,     'label' => 'Commerciaux'],
     ];
@@ -109,6 +111,7 @@ class TrashController extends Controller
             'categories' => [$m->name, ''],
             'quotes'     => [$m->number, $money($m->total_ttc)],
             'orders'     => [$m->number, $money($m->total_ttc)],
+            'suppliers'  => [$m->name, $m->company ?: ($m->city ?: '')],
             'invoices'   => [$m->displayNumber(), $money($m->total_ttc)],
             'users'      => [$m->name, $m->email],
         };

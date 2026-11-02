@@ -5,8 +5,8 @@ namespace App\Services;
 class DocumentTotals
 {
     /**
-     * Chaque ligne : quantity, unit_price (HT), discount_percent, tax_rate.
-     * La TVA est calculée PAR TAUX sur la somme des bases (pas ligne par ligne).
+     * Each line: quantity, unit_price (HT), discount_percent, tax_rate.
+     * VAT is computed PER RATE on the sum of bases (not line by line).
      */
     public function compute(array $lines): array
     {
@@ -48,6 +48,7 @@ class DocumentTotals
         ];
     }
 
+    /** VAT breakdown of a stored document (same rounding as compute) */
     public static function breakdown(iterable $items): array
     {
         $groups = [];

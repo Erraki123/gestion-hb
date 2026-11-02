@@ -10,6 +10,7 @@ use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\Quote;
+use App\Models\SupplierInvoice;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -133,6 +134,7 @@ class DashboardService
 
         $sales = fn () => $this->sales()->whereBetween('issue_date', $d);
         $quotes = fn () => $this->quotes()->whereBetween('issue_date', $d);
+        $credits = fn () => $this->invoices()->where('type', 'avoir')->partialCredits()->whereBetween('issue_date', $d);
 
         $answered = $quotes()->whereIn('status', ['envoye', 'accepte', 'refuse', 'expire'])->count();
         $accepted = $quotes()->where('status', 'accepte')->count();
@@ -142,8 +144,8 @@ class DashboardService
             ->whereBetween('paid_at', $d);
 
         return [
-            'revenue_ht'    => (float) $sales()->sum('subtotal_ht'),
-            'revenue_ttc'   => (float) $sales()->sum('total_ttc'),
+            'revenue_ht'    => (float) $sales()->sum('subtotal_ht') - (float) $credits()->sum('subtotal_ht'),
+            'revenue_ttc'   => (float) $sales()->sum('total_ttc') - (float) $credits()->sum('total_ttc'),
             'invoice_count' => $sales()->count(),
 
             'collected'     => (float) $this->payments()->whereBetween('paid_at', $d)->sum('amount'),
@@ -167,6 +169,13 @@ class DashboardService
             'com_calc'      => (float) $this->commissions()->where('status', '!=', 'annulee')->whereBetween('computed_at', [$from, $to])->sum('amount'),
             'com_pending'   => (float) $this->commissions()->where('status', 'en_attente')->sum('amount'),
             'com_paid'      => (float) $payoutQuery->sum('amount'),
+
+            'suppliers_due' => $this->userId === null
+                ? (float) SupplierInvoice::whereIn('status', ['non_payee', 'partiellement_payee'])->sum(DB::raw('total_ttc - amount_paid'))
+                : 0.0,
+            'suppliers_overdue' => $this->userId === null
+                ? (float) SupplierInvoice::whereIn('status', ['non_payee', 'partiellement_payee'])->whereDate('due_date', '<', today()->toDateString())->sum(DB::raw('total_ttc - amount_paid'))
+                : 0.0,
 
             'top_clients'   => $this->topClients($d),
             'top_products'  => $this->topProducts($d),
@@ -258,6 +267,10 @@ class DashboardService
             ->selectRaw("DATE_FORMAT(issue_date, '%Y-%m') as m, SUM(total_ttc) as t")
             ->groupBy('m')->pluck('t', 'm');
 
+        $creditsByMonth = $this->invoices()->where('type', 'avoir')->partialCredits()->where('issue_date', '>=', $start->toDateString())
+            ->selectRaw("DATE_FORMAT(issue_date, '%Y-%m') as m, SUM(total_ttc) as t")
+            ->groupBy('m')->pluck('t', 'm');
+
         $collected = $this->payments()->where('paid_at', '>=', $start->toDateString())
             ->selectRaw("DATE_FORMAT(paid_at, '%Y-%m') as m, SUM(amount) as t")
             ->groupBy('m')->pluck('t', 'm');
@@ -271,7 +284,7 @@ class DashboardService
 
         return [
             'labels'    => $months->map(fn ($m) => $m->translatedFormat('M Y'))->all(),
-            'billed'    => $months->map(fn ($m) => (float) ($billed[$m->format('Y-m')] ?? 0))->all(),
+            'billed'    => $months->map(fn ($m) => (float) (($billed[$m->format('Y-m')] ?? 0) - ($creditsByMonth[$m->format('Y-m')] ?? 0)))->all(),
             'collected' => $months->map(fn ($m) => (float) ($collected[$m->format('Y-m')] ?? 0))->all(),
             'status_labels' => array_values($labels),
             'status_data'   => collect(array_keys($labels))->map(fn ($k) => (int) ($byStatus[$k] ?? 0))->all(),

@@ -71,7 +71,7 @@ class ReportService
 
     public function period(Request $r): array
     {
-        $mode = in_array($r->input('mode'), ['day', 'month', 'year', 'custom'], true)
+        $mode = in_array($r->input('mode'), ['day', 'month', 'quarter', 'year', 'custom'], true)
             ? $r->input('mode') : 'month';
 
         try {
@@ -81,6 +81,14 @@ class ReportService
                     $from = $day->copy()->startOfDay();
                     $to   = $day->copy()->endOfDay();
                     $label = 'Journalier — ' . $day->format('d/m/Y');
+                    break;
+
+                case 'quarter':
+                    $quarter = max(1, min(4, (int) $r->input('quarter', now()->copy()->subMonth()->quarter)));
+                    $y       = max(2000, min(2100, (int) $r->input('year', now()->year)));
+                    $from    = Carbon::create($y, (($quarter - 1) * 3) + 1, 1)->startOfDay();
+                    $to      = $from->copy()->endOfQuarter();
+                    $label   = 'Trimestriel — T' . $quarter . ' ' . $y;
                     break;
 
                 case 'year':
@@ -100,21 +108,23 @@ class ReportService
                     break;
 
                 default:
-                    $m    = Carbon::createFromFormat('!Y-m', (string) $r->input('month', now()->format('Y-m')))->startOfMonth();
-                    $from = $m->copy();
-                    $to   = $m->copy()->endOfMonth();
-                    $label = 'Mensuel — ' . $m->translatedFormat('F Y');
+                    $defaultMonth = $r->input('month', now()->copy()->subMonth()->format('Y-m'));
+                    $m            = Carbon::createFromFormat('!Y-m', (string) $defaultMonth)->startOfMonth();
+                    $from        = $m->copy();
+                    $to          = $m->copy()->endOfMonth();
+                    $label       = 'Mensuel — ' . $m->translatedFormat('F Y');
             }
         } catch (\Throwable) {
             $mode  = 'month';
-            $from  = now()->startOfMonth();
-            $to    = now()->endOfMonth();
+            $from  = now()->copy()->subMonth()->startOfMonth();
+            $to    = now()->copy()->subMonth()->endOfMonth();
             $label = 'Mensuel — ' . $from->translatedFormat('F Y');
         }
 
         return [
             'mode' => $mode, 'from' => $from, 'to' => $to, 'label' => $label,
             'date' => $from->format('Y-m-d'), 'month' => $from->format('Y-m'), 'year' => $from->year,
+            'quarter' => $from->quarter,
         ];
     }
 
@@ -160,7 +170,7 @@ class ReportService
 
     private function sales(array $d, ?int $userId, bool $isAdmin): array
     {
-        $rows = Invoice::with(['client', 'commercial'])
+        $invoiceRows = Invoice::with(['client', 'commercial'])
             ->where('type', 'facture')
             ->whereIn('status', ['emise', 'partiellement_payee', 'payee'])
             ->whereBetween('issue_date', $d)
@@ -178,6 +188,26 @@ class ReportService
                 'paid'       => (float) $i->amount_paid,
                 'balance'    => $i->balance(),
             ])->all();
+
+        $creditRows = Invoice::with(['client', 'commercial'])
+            ->partialCredits()
+            ->whereBetween('issue_date', $d)
+            ->when($userId, fn ($q, $id) => $q->where('commercial_id', $id))
+            ->orderBy('issue_date')->orderBy('id')
+            ->get()
+            ->map(fn ($i) => [
+                'number'     => $i->number,
+                'date'       => $i->issue_date->format('d/m/Y'),
+                'client'     => $i->client?->name,
+                'commercial' => $i->commercial?->name,
+                'ht'         => -(float) $i->subtotal_ht,
+                'tax'        => -(float) $i->tax_amount,
+                'ttc'        => -(float) $i->total_ttc,
+                'paid'       => 0.0,
+                'balance'    => 0.0,
+            ])->all();
+
+        $rows = array_merge($invoiceRows, $creditRows);
 
         return [
             'columns' => [
@@ -198,7 +228,7 @@ class ReportService
                 'balance' => $this->sum($rows, 'balance'),
             ],
             'summary' => [['label' => 'Nombre de factures', 'value' => count($rows), 'type' => 'number']],
-            'note'    => 'Les brouillons, les avoirs et les factures annulées sont exclus.',
+            'note'    => 'Les avoirs partiels sont déduits.',
         ];
     }
 

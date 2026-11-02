@@ -110,6 +110,14 @@ class ClientController extends Controller
                 'label' => 'Facture ' . $i->number, 'debit' => (float) $i->total_ttc, 'credit' => 0.0,
             ]));
 
+        Invoice::where('client_id', $client->id)
+            ->partialCredits()
+            ->get()
+            ->each(fn ($i) => $moves->push([
+                'date' => $i->issue_date->copy(), 'order' => 0,
+                'label' => 'Avoir partiel ' . $i->number, 'debit' => 0.0, 'credit' => (float) $i->total_ttc,
+            ]));
+
         Payment::with('invoice')->where('client_id', $client->id)->where('status', 'valide')->get()
             ->each(fn ($p) => $moves->push([
                 'date' => $p->paid_at->copy(), 'order' => 1,

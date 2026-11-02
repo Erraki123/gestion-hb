@@ -49,6 +49,49 @@ class CommissionService
         });
     }
 
+    public function onCreditNoteIssued(Invoice $credit): void
+    {
+        DB::transaction(function () use ($credit) {
+            if ($credit->parent_id === null) {
+                return;
+            }
+
+            $parent = $this->lockInvoice($credit->parent_id);
+            $invoiceCommission = Commission::withoutGlobalScopes()
+                ->where('invoice_id', $parent->id)
+                ->where('kind', 'invoice')
+                ->where('status', '!=', 'annulee')
+                ->first();
+
+            if (! $invoiceCommission) {
+                return;
+            }
+
+            $base = $this->base((float) $credit->total_ttc, $credit);
+            $amount = -round($base * (float) $invoiceCommission->rate_value / 100, 2);
+
+            if ($amount === 0.0) {
+                return;
+            }
+
+            Commission::withoutGlobalScopes()->create([
+                'user_id'     => $invoiceCommission->user_id,
+                'rule_id'     => $invoiceCommission->rule_id,
+                'kind'        => 'ajustement',
+                'parent_id'   => $invoiceCommission->id,
+                'invoice_id'  => $credit->id,
+                'payment_id'  => null,
+                'method'      => $invoiceCommission->method,
+                'rate_value'  => $invoiceCommission->rate_value,
+                'base_amount' => round($base, 2),
+                'amount'      => $amount,
+                'status'      => 'en_attente',
+                'computed_at' => now(),
+                'note'        => 'Avoir ' . $credit->number,
+            ]);
+        });
+    }
+
     /** عمولة "نسبة من الدفعات" + تحديث المبلغ الثابت */
     public function onPaymentRecorded(Payment $payment): void
     {

@@ -36,6 +36,12 @@
                 <div class="text-right">
                     <div class="text-[11px] font-semibold uppercase tracking-wider text-gray-500">Reste à payer</div>
                     <div class="text-xl font-bold {{ $due > 0 ? 'text-red-600' : 'text-green-700' }}">{{ number_format($due, 2, ',', ' ') }} DH</div>
+                    @php $creditDue = \App\Models\Invoice::where('client_id', $client->id)->where('type', 'facture')->whereIn('status', ['emise', 'partiellement_payee', 'payee'])->get()->sum(fn ($invoice) => $invoice->creditDue()); @endphp
+                    @if ($creditDue > 0)
+                        <div class="mt-2 rounded border border-yellow-200 bg-yellow-100 px-2 py-1 text-xs text-yellow-800">
+                            Crédit client à rembourser ou compenser : {{ number_format($creditDue, 2, ',', ' ') }} DH (traitement manuel)
+                        </div>
+                    @endif
                 </div>
             </div>
 

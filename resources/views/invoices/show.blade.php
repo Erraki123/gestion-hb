@@ -21,6 +21,14 @@
                     </form>
                 @endif
 
+                @if ($invoice->type === 'facture' && in_array($invoice->status, ['emise', 'partiellement_payee', 'payee'], true) && $invoice->items->contains(fn ($item) => (float) $item->returnableQuantity() > 0))
+                    <form method="POST" action="{{ route('invoices.returns.store', $invoice) }}"
+                          onsubmit="return confirm('Créer un retour client pour cette facture ?')">
+                        @csrf
+                        <button class="px-3 py-2 bg-amber-600 text-white rounded">Créer un retour</button>
+                    </form>
+                @endif
+
                 @if ($invoice->type === 'facture' && $invoice->status === 'emise' && (float) $invoice->amount_paid == 0)
                     <form method="POST" action="{{ route('invoices.credit', $invoice) }}"
                           onsubmit="return confirm('Annuler cette facture en créant un avoir complet ?')">
@@ -28,6 +36,8 @@
                         <button class="px-3 py-2 bg-red-600 text-white rounded">Annuler par avoir</button>
                     </form>
                 @endif
+
+                <a href="{{ route('returns.index') }}" class="px-3 py-2 bg-gray-700 text-white rounded">Retours et avoirs</a>
             </div>
         </div>
     </x-slot>
@@ -42,6 +52,24 @@
 
         @if ($invoice->type === 'facture')
             <x-workflow-steps :current="$invoice->status === 'payee' ? 5 : ($invoice->isDraft() ? 3 : 4)" />
+        @endif
+
+        @if ($invoice->type === 'facture' && ! $invoice->isDraft())
+            <div class="bg-white p-6 rounded shadow space-y-3">
+                <div class="flex justify-between text-sm">
+                    <span>Avoirs :</span>
+                    <span class="font-semibold text-red-600">-{{ number_format($invoice->creditedAmount(), 2, ',', ' ') }} DH</span>
+                </div>
+                <div class="flex justify-between text-sm font-semibold">
+                    <span>Reste à payer</span>
+                    <span>{{ number_format($invoice->balance(), 2, ',', ' ') }} DH</span>
+                </div>
+                @if ($invoice->creditDue() > 0)
+                    <div class="rounded border border-yellow-200 bg-yellow-100 px-3 py-2 text-sm text-yellow-800">
+                        Crédit client à rembourser ou compenser : {{ number_format($invoice->creditDue(), 2, ',', ' ') }} DH (traitement manuel)
+                    </div>
+                @endif
+            </div>
         @endif
 
         <div class="bg-white p-6 rounded shadow grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
@@ -91,6 +119,23 @@
         @endif
 
         @if ($invoice->type === 'facture' && ! $invoice->isDraft())
+            @php $returns = \App\Models\CustomerReturn::where('invoice_id', $invoice->id)->orderByDesc('id')->get(); @endphp
+            @if ($returns->isNotEmpty())
+                <div class="bg-white p-6 rounded shadow">
+                    <h3 class="mb-3 text-lg font-semibold text-gray-900">Retours et avoirs</h3>
+                    <div class="space-y-2 text-sm">
+                        @foreach ($returns as $return)
+                            <div class="flex items-center justify-between gap-3 border-b border-gray-200 pb-2 last:border-0 last:pb-0">
+                                <a class="text-indigo-600" href="{{ route('returns.show', $return) }}">{{ $return->displayNumber() }}</a>
+                                <span><x-status-badge :status="$return->status" /></span>
+                                @if ($return->creditNote)
+                                    <span class="text-red-600">{{ $return->creditNote->displayNumber() }}</span>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
+                </div>
+            @endif
             @include('invoices._payments')
         @endif
 

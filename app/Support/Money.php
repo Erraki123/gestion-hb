@@ -23,4 +23,13 @@ class Money
 
         return ucfirst($s);
     }
+
+    public static function price(float|string|null $v): string
+    {
+        $s = number_format((float) $v, 4, ',', ' ');
+        $s = preg_replace('/(,\d\d)00$/', '$1', $s);
+        $s = preg_replace('/(,\d\d\d)0$/', '$1', $s);
+
+        return $s;
+    }
 }

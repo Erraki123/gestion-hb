@@ -9,11 +9,17 @@ use App\Models\ClientAttachment;
 use App\Models\Commission;
 use App\Models\CommissionPayout;
 use App\Models\CommissionRule;
+use App\Models\Delivery;
+use App\Models\GoodsReceipt;
 use App\Models\Invoice;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\Product;
+use App\Models\PurchaseOrder;
 use App\Models\Quote;
+use App\Models\Supplier;
+use App\Models\SupplierInvoice;
+use App\Models\SupplierPayment;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
@@ -28,7 +34,14 @@ class ActivityLogger
         Product::class          => 'Produit',
         Quote::class            => 'Devis',
         Order::class            => 'Commande',
+        Delivery::class         => 'Bon de livraison',
+        Supplier::class         => 'Fournisseur',
+        PurchaseOrder::class    => 'Commande fournisseur',
+        GoodsReceipt::class     => 'Réception fournisseur',
+        SupplierInvoice::class  => 'Facture fournisseur',
+        SupplierPayment::class  => 'Paiement fournisseur',
         Invoice::class          => 'Facture',
+        \App\Models\CustomerReturn::class => 'Retour client',
         Payment::class          => 'Paiement',
         Commission::class       => 'Commission',
         CommissionRule::class   => 'Règle de commission',

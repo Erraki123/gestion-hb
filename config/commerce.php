@@ -6,7 +6,7 @@ return [
     'currency' => 'DH',
 
     'company' => [
-        'name'    => env('COMPANY_NAME', 'Ma Société'),
+        'name'    => env('COMPANY_NAME', 'hn bloom'),
         'address' => env('COMPANY_ADDRESS', 'Casablanca, Maroc'),
         'phone'   => env('COMPANY_PHONE', ''),
         'email'   => env('COMPANY_EMAIL', ''),

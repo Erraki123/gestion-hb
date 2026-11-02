@@ -34,10 +34,28 @@ class Order extends Model
     public function commercial() { return $this->belongsTo(User::class, 'commercial_id')->withTrashed(); }
     public function quote()      { return $this->belongsTo(Quote::class)->withTrashed(); }
     public function items()      { return $this->hasMany(OrderItem::class); }
+    public function deliveries() { return $this->hasMany(Delivery::class); }
     public function invoice()
 {
     return $this->hasOne(Invoice::class)
         ->where('type', 'facture')
         ->where('status', '!=', 'annulee');
 }
+
+    public function deliveryStatus(): string
+    {
+        $items = $this->relationLoaded('items') ? $this->items : $this->items()->get();
+
+        if ($items->isEmpty()) {
+            return 'non_livree';
+        }
+
+        $remaining = $items->sum(fn ($item) => (float) $item->remainingQuantity());
+
+        if ($remaining <= 0) {
+            return 'livree';
+        }
+
+        return $items->contains(fn ($item) => (float) $item->deliveredQuantity() > 0) ? 'partielle' : 'non_livree';
+    }
 }

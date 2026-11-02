@@ -6,10 +6,12 @@
             ['Tableau de bord', route('dashboard'), 'dashboard', request()->routeIs('dashboard', 'admin.dashboard', 'commercial.dashboard')],
         ]],
         ['title' => 'Ventes', 'items' => [
-            ['Clients',   route('clients.index'),  'users',   request()->routeIs('clients.*')],
-            ['Devis',     route('quotes.index'),   'file',    request()->routeIs('quotes.*')],
-            ['Commandes', route('orders.index'),   'cart',    request()->routeIs('orders.*')],
-            ['Factures',  route('invoices.index'), 'receipt', request()->routeIs('invoices.*')],
+            ['Clients',    route('clients.index'),    'users',   request()->routeIs('clients.*')],
+            ['Devis',      route('quotes.index'),     'file',    request()->routeIs('quotes.*')],
+            ['Commandes',  route('orders.index'),     'cart',    request()->routeIs('orders.*')],
+            ['Livraisons', route('deliveries.index'), 'truck',   request()->routeIs('deliveries.*')],
+            ['Factures',   route('invoices.index'),   'receipt', request()->routeIs('invoices.*')],
+            ['Retours',    route('returns.index'),    'undo',    request()->routeIs('returns.*', 'invoices.returns.*')],
         ]],
         ['title' => 'Finance', 'items' => [
             ['Paiements',   route('payments.index'),    'wallet',  request()->routeIs('payments.*')],
@@ -25,12 +27,18 @@
     ];
 
     if ($admin) {
+        $groups[] = ['title' => 'Achats', 'items' => [
+            ['Fournisseurs', route('suppliers.index'), 'building', request()->routeIs('suppliers.*')],
+            ['Commandes fournisseur', route('purchase-orders.index'), 'clipboard', request()->routeIs('purchase-orders.*')],
+            ['Factures fournisseur', route('supplier-invoices.index'), 'receipt', request()->routeIs('supplier-invoices.*')],
+        ]];
         $groups[] = ['title' => 'Administration', 'items' => [
             ['Commerciaux',         route('admin.commerciaux.index'),  'briefcase', request()->routeIs('admin.commerciaux.*')],
             ['Règles commission',   route('commission-rules.index'),   'sliders',   request()->routeIs('commission-rules.*')],
             ['Paramètres',          route('settings.edit'),            'settings',  request()->routeIs('settings.*')],
             ['Corbeille',           route('trash.index'),              'trash',     request()->routeIs('trash.*')],
             ['Journal d\'activité', route('activity.index'),           'activity',  request()->routeIs('activity.*')],
+            ['Export comptable',    route('accounting.index'),         'download',  request()->routeIs('accounting.*')],
             ['Système',             route('system.index'),             'shield',    request()->routeIs('system.*')],
         ]];
     }

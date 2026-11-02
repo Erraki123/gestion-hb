@@ -89,7 +89,7 @@ class InvoiceController extends Controller
             $invoice->items()->createMany(
                 $o->items->map(fn ($i) => $i->only([
                     'product_id', 'name', 'sku', 'unit', 'quantity',
-                    'unit_price', 'discount_percent', 'line_total_ht',
+                    'unit_price', 'discount_percent', 'tax_rate', 'line_total_ht',
                 ]))->all()
             );
 
@@ -190,7 +190,7 @@ class InvoiceController extends Controller
             $credit->items()->createMany(
                 $i->items->map(fn ($it) => $it->only([
                     'product_id', 'name', 'sku', 'unit', 'quantity',
-                    'unit_price', 'discount_percent', 'line_total_ht',
+                    'unit_price', 'discount_percent', 'tax_rate', 'line_total_ht',
                 ]))->all()
             );
 

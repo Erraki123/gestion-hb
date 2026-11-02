@@ -4,10 +4,15 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
 
 return new class extends Migration
 {
+    private const DOCS = [
+        'quote_items'   => ['quotes', 'quote_id'],
+        'order_items'   => ['orders', 'order_id'],
+        'invoice_items' => ['invoices', 'invoice_id'],
+    ];
+
     public function up(): void
     {
         $default = (float) config('commerce.tax_rate', 20);
@@ -23,41 +28,31 @@ return new class extends Migration
 
         DB::table('products')->update(['tax_rate' => $default]);
 
-        foreach (['quote_items', 'order_items', 'invoice_items'] as $tableName) {
-            Schema::table($tableName, function (Blueprint $table) {
+        foreach (self::DOCS as $items => [$docs, $fk]) {
+            Schema::table($items, function (Blueprint $table) {
                 $table->decimal('tax_rate', 5, 2)->default(20)->after('discount_percent');
             });
 
-            Schema::table($tableName, function (Blueprint $table) {
+            Schema::table($items, function (Blueprint $table) {
                 $table->decimal('unit_price', 14, 4)->change();
             });
-        }
 
-        $this->copyDocumentTaxRates('quote_items', 'quotes');
-        $this->copyDocumentTaxRates('order_items', 'orders');
-        $this->copyDocumentTaxRates('invoice_items', 'invoices');
-    }
-
-    private function copyDocumentTaxRates(string $itemTable, string $documentTable): void
-    {
-        $rows = DB::table($itemTable)
-            ->join($documentTable, $documentTable . '.id', '=', $itemTable . '.' . Str::snake(Str::singular($documentTable)) . '_id')
-            ->select($itemTable . '.id as item_id', $documentTable . '.tax_rate as rate')
-            ->get();
-
-        foreach ($rows as $row) {
-            DB::table($itemTable)
-                ->where('id', $row->item_id)
-                ->update(['tax_rate' => $row->rate]);
+            // Each existing line takes the VAT rate of its document (portable: MySQL and SQLite)
+            DB::table($docs)->select('id', 'tax_rate')->orderBy('id')
+                ->chunkById(500, function ($rows) use ($items, $fk) {
+                    foreach ($rows as $d) {
+                        DB::table($items)->where($fk, $d->id)->update(['tax_rate' => $d->tax_rate]);
+                    }
+                });
         }
     }
 
     public function down(): void
     {
-        foreach (['quote_items', 'order_items', 'invoice_items'] as $tableName) {
-            Schema::table($tableName, fn (Blueprint $table) => $table->dropColumn('tax_rate'));
+        foreach (array_keys(self::DOCS) as $items) {
+            Schema::table($items, fn (Blueprint $t) => $t->dropColumn('tax_rate'));
         }
 
-        Schema::table('products', fn (Blueprint $table) => $table->dropColumn('tax_rate'));
+        Schema::table('products', fn (Blueprint $t) => $t->dropColumn('tax_rate'));
     }
 };

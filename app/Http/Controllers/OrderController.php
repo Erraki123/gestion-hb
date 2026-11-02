@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Order;
+use App\Models\Setting;
 use App\Services\StockService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -17,7 +18,7 @@ class OrderController extends Controller
 
     public function index(Request $request)
     {
-        $orders = Order::with(['client', 'commercial'])
+        $orders = Order::with(['client', 'commercial', 'items'])
             ->when($request->q, fn ($q, $s) => $q->where(function ($w) use ($s) {
                 $w->where('number', 'like', "%{$s}%")
                   ->orWhereHas('client', fn ($c) => $c->where('name', 'like', "%{$s}%"));
@@ -50,22 +51,28 @@ class OrderController extends Controller
 
             $o->load('items');
 
-            // Confirmation => sortie de stock (si un produit manque, TOUT est annulé)
-            if ($to === 'confirmee' && ! $o->stock_deducted) {
-                foreach ($o->items as $item) {
-                    $stock->move($item->product()->firstOrFail(), 'sortie', (float) $item->quantity,
-                        auth()->id(), 'Commande confirmée', $o->number);
+            if ($to === 'confirmee') {
+                if (! $o->stock_deducted && Setting::get('stock_deduction', 'order') === 'order') {
+                    foreach ($o->items as $item) {
+                        $stock->move($item->product()->firstOrFail(), 'sortie', (float) $item->quantity,
+                            auth()->id(), 'Commande confirmée', $o->number);
+                    }
+                    $o->stock_deducted = true;
                 }
-                $o->stock_deducted = true;
             }
 
-            // Annulation => retour en stock
-            if ($to === 'annulee' && $o->stock_deducted) {
-                foreach ($o->items as $item) {
-                    $stock->move($item->product()->firstOrFail(), 'entree', (float) $item->quantity,
-                        auth()->id(), 'Commande annulée', $o->number);
+            if ($to === 'annulee') {
+                if ($o->deliveries()->where('status', 'valide')->exists()) {
+                    throw ValidationException::withMessages(['status' => 'Annulez d\'abord les bons de livraison']);
                 }
-                $o->stock_deducted = false;
+
+                if ($o->stock_deducted) {
+                    foreach ($o->items as $item) {
+                        $stock->move($item->product()->firstOrFail(), 'entree', (float) $item->quantity,
+                            auth()->id(), 'Commande annulée', $o->number);
+                    }
+                    $o->stock_deducted = false;
+                }
             }
 
             $o->status = $to;

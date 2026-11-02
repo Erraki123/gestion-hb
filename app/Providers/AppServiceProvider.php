@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Events\CreditNoteIssued;
 use App\Events\InvoiceCancelled;
 use App\Events\InvoiceIssued;
 use App\Events\PaymentCancelled;
@@ -79,6 +80,7 @@ class AppServiceProvider extends ServiceProvider
 
         Event::listen(InvoiceIssued::class,    fn ($e) => $run(fn ($s) => $s->onInvoiceIssued($e->invoice)));
         Event::listen(InvoiceCancelled::class, fn ($e) => $run(fn ($s) => $s->onInvoiceCancelled($e->invoice)));
+        Event::listen(CreditNoteIssued::class, fn ($e) => $run(fn ($s) => $s->onCreditNoteIssued($e->creditNote)));
         Event::listen(PaymentRecorded::class,  fn ($e) => $run(fn ($s) => $s->onPaymentRecorded($e->payment)));
         Event::listen(PaymentCancelled::class, fn ($e) => $run(fn ($s) => $s->onPaymentCancelled($e->payment)));
 

@@ -26,7 +26,7 @@
         <div class="panel overflow-x-auto">
             <table class="min-w-full text-sm">
                 <thead class="text-left">
-                    <tr><th class="p-4">N°</th><th class="p-4">Client</th><th class="p-4">Date</th><th class="p-4">Total TTC</th><th class="p-4">Statut</th><th class="p-4 text-right">Actions</th></tr>
+                    <tr><th class="p-4">N°</th><th class="p-4">Client</th><th class="p-4">Date</th><th class="p-4">Total TTC</th><th class="p-4">Livraison</th><th class="p-4">Statut</th><th class="p-4 text-right">Actions</th></tr>
                 </thead>
                 <tbody>
                 @forelse ($orders as $o)
@@ -35,6 +35,7 @@
                         <td class="p-4">{{ $o->client?->name }}</td>
                         <td class="p-4 text-gray-600">{{ $o->created_at->format('d/m/Y') }}</td>
                         <td class="p-4 font-medium text-gray-900">{{ number_format($o->total_ttc, 2, ',', ' ') }} DH</td>
+                        <td class="p-4"><x-status-badge :status="$o->deliveryStatus()" /></td>
                         <td class="p-4"><x-status-badge :status="$o->status" /></td>
                         <td class="p-4"><div class="flex justify-end"><a href="{{ route('orders.show', $o) }}" class="act">Voir</a></div></td>
                     </tr>

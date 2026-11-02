@@ -37,14 +37,15 @@
 
     <table>
         <thead>
-            <tr><th>Désignation</th><th>Qté</th><th>Prix HT</th><th>Remise</th><th class="right">Total HT</th></tr>
+            <tr><th>Désignation</th><th>Qté</th><th>Prix HT</th><th>TVA</th><th>Remise</th><th class="right">Total HT</th></tr>
         </thead>
         <tbody>
         @foreach ($quote->items as $i)
             <tr>
                 <td>{{ $i->name }}<br><small>{{ $i->sku }}</small></td>
                 <td>{{ $i->quantity + 0 }} {{ $i->unit }}</td>
-                <td class="right">{{ number_format($i->unit_price, 2, ',', ' ') }}</td>
+                <td class="right">{{ \App\Support\Money::price($i->unit_price) }}</td>
+                <td>{{ $i->tax_rate + 0 }} %</td>
                 <td>{{ $i->discount_percent + 0 }} %</td>
                 <td class="right">{{ number_format($i->line_total_ht, 2, ',', ' ') }}</td>
             </tr>
@@ -54,7 +55,12 @@
 
     <table class="totals">
         <tr><td>Total HT</td><td class="right">{{ number_format($quote->subtotal_ht, 2, ',', ' ') }} DH</td></tr>
-        <tr><td>TVA ({{ $quote->tax_rate + 0 }}%)</td><td class="right">{{ number_format($quote->tax_amount, 2, ',', ' ') }} DH</td></tr>
+        @foreach (\App\Services\DocumentTotals::breakdown($quote->items) as $b)
+            <tr>
+                <td>TVA {{ $b['rate'] + 0 }} % (base {{ number_format($b['base'], 2, ',', ' ') }})</td>
+                <td class="right">{{ number_format($b['tax'], 2, ',', ' ') }} DH</td>
+            </tr>
+        @endforeach
         <tr><td><strong>Total TTC</strong></td><td class="right"><strong>{{ number_format($quote->total_ttc, 2, ',', ' ') }} DH</strong></td></tr>
     </table>
 
