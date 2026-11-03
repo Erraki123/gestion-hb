@@ -1,10 +1,10 @@
 import defaultTheme from 'tailwindcss/defaultTheme';
 import forms from '@tailwindcss/forms';
 
-// ذهبي مناسب للخلفيات الداكنة (الدرجات الفاتحة صارت داكنة والعكس)
-const gold = {
-    50: '#1E1707', 100: '#2A2008', 200: '#5C460F', 300: '#EBD797', 400: '#DFBF63',
-    500: '#C9A227', 600: '#C9A227', 700: '#D2AA3A', 800: '#DFBF63', 900: '#EBD797', 950: '#FFF3C4',
+// gold و indigo صارا بنفسجياً (اللون الأساسي)
+const brand = {
+    50: '#F5F3FF', 100: '#EDE9FE', 200: '#DDD6FE', 300: '#C4B5FD', 400: '#8B5CF6',
+    500: '#7C3AED', 600: '#6D28D9', 700: '#5B21B6', 800: '#4C1D95', 900: '#3B0F7A', 950: '#2E1065',
 };
 
 /** @type {import('tailwindcss').Config} */
@@ -18,13 +18,9 @@ export default {
         extend: {
             fontFamily: { sans: ['Inter Variable', ...defaultTheme.fontFamily.sans] },
             colors: {
-                gold,
-                indigo: gold,
-                // رمادي معكوس: الفاتح صار داكناً والداكن صار فاتحاً
-                gray: {
-                    50: '#1A1915', 100: '#0B0B0A', 200: '#2A2822', 300: '#3A372F', 400: '#78746A',
-                    500: '#A7A397', 600: '#D3CFC2', 700: '#E7E4DA', 800: '#F4F2EC', 900: '#FAF9F6', 950: '#050504',
-                },
+                gold: brand,
+                indigo: brand,
+                gray: { 950: '#0B1020' }, // يُدمج مع الرمادي الافتراضي (الطبيعي الفاتح)
             },
         },
     },

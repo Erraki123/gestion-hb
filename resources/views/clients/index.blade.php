@@ -3,19 +3,18 @@
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
                 <h2>Clients</h2>
-                <p class="mt-1 text-sm text-gray-500">{{ $clients->total() }} client(s) enregistré(s)</p>
+                <p class="mt-1 text-sm text-gray-500">{{ $clients->total() }} client(s)</p>
             </div>
-            <a href="{{ route('clients.create') }}" class="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded">
+            <button type="button" x-data x-on:click="$dispatch('client-form', {})"
+                    class="inline-flex items-center gap-2 rounded-lg bg-gold-500 px-4 py-2.5 text-sm font-semibold text-gray-950 hover:bg-gold-400">
                 <span class="text-lg leading-none">+</span> Nouveau client
-            </a>
+            </button>
         </div>
     </x-slot>
 
     <div class="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         @if (session('success'))
-            <div class="mb-4 flex items-center gap-2 rounded-xl border border-green-200 bg-green-100 p-3 text-sm text-green-800">
-                <x-icon name="shield" class="h-4 w-4" /> {{ session('success') }}
-            </div>
+            <div class="mb-4 rounded-xl border border-green-200 bg-green-100 p-3 text-sm text-green-800">{{ session('success') }}</div>
         @endif
 
         {{-- Filtres --}}
@@ -40,12 +39,12 @@
             @endif
             <button class="rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-gray-950 hover:bg-gold-400">Filtrer</button>
             @if (request()->hasAny(['q', 'status', 'commercial_id']))
-                <a href="{{ route('clients.index') }}" class="text-sm text-gray-500 hover:text-white">Réinitialiser</a>
+                <a href="{{ route('clients.index') }}" class="text-sm text-gray-500 hover:text-gray-900">Réinitialiser</a>
             @endif
         </form>
 
         {{-- Tableau --}}
-        <div class="panel overflow-x-auto">
+        <div class="panel overflow-x-auto" x-data>
             <table class="min-w-full text-sm">
                 <thead class="text-left">
                     <tr>
@@ -63,6 +62,12 @@
                         $st = ['actif' => ['bg-green-100 text-green-800', 'bg-green-500'],
                                'prospect' => ['bg-blue-100 text-blue-800', 'bg-blue-400']][$client->status]
                               ?? ['bg-gray-200 text-gray-700', 'bg-gray-400'];
+                        $editData = [
+                            'action' => route('clients.update', $client),
+                            'method' => 'PUT',
+                            'f' => collect($client->only(['name', 'company', 'phone', 'email', 'address', 'city', 'ice', 'status', 'commercial_id', 'comment']))
+                                    ->map(fn ($v) => $v ?? '')->all(),
+                        ];
                     @endphp
                     <tr>
                         <td class="p-4">
@@ -79,28 +84,30 @@
                         <td class="p-4 text-gray-700">{{ $client->phone ?: '—' }}</td>
                         <td class="p-4 text-gray-700">{{ $client->city ?: '—' }}</td>
                         <td class="p-4">
-                            <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded text-xs {{ $st[0] }}">
+                            <span class="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs {{ $st[0] }}">
                                 <span class="h-1.5 w-1.5 rounded-full {{ $st[1] }}"></span>{{ ucfirst($client->status) }}
                             </span>
                         </td>
-                        @if (auth()->user()->isAdmin()) <td class="p-4 text-gray-700">{{ $client->commercial?->name }}</td> @endif
+                        @if (auth()->user()->isAdmin()) <td class="p-4 text-gray-700">{{ $client->commercial?->name ?: '—' }}</td> @endif
                         <td class="p-4">
                             <div class="flex items-center justify-end gap-2">
                                 <a href="{{ route('clients.show', $client) }}" class="act">Voir</a>
-                                <a href="{{ route('clients.edit', $client) }}" class="act">Modifier</a>
-                                <form method="POST" action="{{ route('clients.destroy', $client) }}" onsubmit="return confirm('Supprimer ce client ?')">
-                                    @csrf @method('DELETE')
-                                    <button class="act act-danger">Supprimer</button>
-                                </form>
+                                <button type="button" class="act" x-on:click="$dispatch('client-form', @js($editData))">Modifier</button>
+                                <button type="button" class="act act-danger"
+                                        x-on:click="$dispatch('confirm-delete', @js([
+                                            'action' => route('clients.destroy', $client),
+                                            'title' => 'Supprimer ce client ?',
+                                            'text' => $client->name . ' sera supprimé définitivement.',
+                                        ]))">Supprimer</button>
                             </div>
                         </td>
                     </tr>
                 @empty
                     <tr>
-                        <td colspan="6" class="p-12 text-center">
+                        <td colspan="{{ auth()->user()->isAdmin() ? 6 : 5 }}" class="p-12 text-center">
                             <x-icon name="users" class="mx-auto h-10 w-10 text-gray-400" />
                             <p class="mt-3 font-medium text-gray-900">Aucun client trouvé</p>
-                            <p class="text-sm text-gray-500">Ajoutez votre premier client pour commencer.</p>
+                            <p class="text-sm text-gray-500">Cliquez sur « Nouveau client » pour commencer.</p>
                         </td>
                     </tr>
                 @endforelse
@@ -110,5 +117,7 @@
 
         <div class="mt-5">{{ $clients->links() }}</div>
     </div>
-</x-app-layout>
 
+    @include('clients._modal')
+    @include('clients._confirm')
+</x-app-layout>

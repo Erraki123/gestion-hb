@@ -2,15 +2,16 @@
 <div x-data="quoteForm(@js($products), @js($initialItems), {{ auth()->user()->isAdmin() ? 'true' : 'false' }}, @js($mode), {{ $defaultRate }})">
 
     @if ($errors->any())
-        <div class="mb-4 p-3 bg-red-100 text-red-800 rounded text-sm">
+        <div class="mb-5 rounded-xl border border-red-200 bg-red-100 p-3 text-sm text-red-800">
             @foreach ($errors->all() as $e) <div>{{ $e }}</div> @endforeach
         </div>
     @endif
 
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+    {{-- En-tête du devis --}}
+    <div class="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div>
             <x-input-label for="client_id" value="Client *" />
-            <select id="client_id" name="client_id" class="block w-full border-gray-300 rounded" required>
+            <select id="client_id" name="client_id" class="mt-1 block w-full" required>
                 <option value="">— Choisir —</option>
                 @foreach ($clients as $c)
                     <option value="{{ $c->id }}" @selected(old('client_id', $selectedClient) == $c->id)>
@@ -21,35 +22,36 @@
         </div>
         <div>
             <x-input-label for="issue_date" value="Date *" />
-            <x-text-input id="issue_date" name="issue_date" type="date" class="block w-full"
+            <x-text-input id="issue_date" name="issue_date" type="date" class="mt-1 block w-full"
                 :value="old('issue_date', optional($quote?->issue_date)->format('Y-m-d') ?? now()->format('Y-m-d'))" required />
         </div>
         <div>
             <x-input-label for="valid_until" value="Valable jusqu'au" />
-            <x-text-input id="valid_until" name="valid_until" type="date" class="block w-full"
+            <x-text-input id="valid_until" name="valid_until" type="date" class="mt-1 block w-full"
                 :value="old('valid_until', optional($quote?->valid_until)->format('Y-m-d') ?? now()->addDays(config('commerce.quote_validity_days'))->format('Y-m-d'))" />
         </div>
     </div>
 
+    {{-- Lignes --}}
+    <h3 class="panel-title mb-3">Produits</h3>
     <div class="overflow-x-auto">
         <table class="min-w-full text-sm">
-            <thead class="bg-gray-50 text-left">
+            <thead class="text-left">
                 <tr>
                     <th class="p-2">Produit</th>
-                    <th class="p-2 w-24">Qté</th>
-                    <th class="p-2 w-36">Prix {{ $mode === 'ttc' ? 'TTC' : 'HT' }}</th>
-                    <th class="p-2 w-24">TVA</th>
-                    <th class="p-2 w-24">Remise %</th>
-                    <th class="p-2 w-32 text-right">Total HT</th>
-                    <th class="p-2 w-10"></th>
+                    <th class="w-24 p-2">Qté</th>
+                    <th class="w-36 p-2">Prix {{ $mode === 'ttc' ? 'TTC' : 'HT' }}</th>
+                    <th class="w-24 p-2">TVA</th>
+                    <th class="w-24 p-2">Remise %</th>
+                    <th class="w-32 p-2 text-right">Total HT</th>
+                    <th class="w-10 p-2"></th>
                 </tr>
             </thead>
             <tbody>
                 <template x-for="(row, i) in rows" :key="row.key">
-                    <tr class="border-t align-top">
+                    <tr class="border-t border-white/5 align-top">
                         <td class="p-2">
-                            <select :name="`items[${i}][product_id]`" x-model="row.product_id" @change="pick(row)"
-                                    class="border-gray-300 rounded w-full" required>
+                            <select :name="`items[${i}][product_id]`" x-model="row.product_id" @change="pick(row)" class="w-full" required>
                                 <option value="">— Produit —</option>
                                 <template x-for="p in products" :key="p.id">
                                     <option :value="p.id" x-text="`${p.name} (${p.sku}) — stock ${p.stock_quantity}`"></option>
@@ -57,20 +59,19 @@
                             </select>
                         </td>
                         <td class="p-2">
-                            <input type="number" step="0.01" min="0.01" :name="`items[${i}][quantity]`" x-model.number="row.quantity"
-                                   class="border-gray-300 rounded w-full" required>
+                            <input type="number" step="0.01" min="0.01" :name="`items[${i}][quantity]`" x-model.number="row.quantity" class="w-full" required>
                         </td>
                         <td class="p-2">
                             <input type="number" step="0.0001" min="0" x-model="row.price_input" @input="recalc(row)"
-                                   :readonly="!isAdmin" :class="isAdmin ? '' : 'bg-gray-100'" class="border-gray-300 rounded w-full">
+                                   :readonly="!isAdmin" :class="isAdmin ? '' : 'opacity-60'" class="w-full">
                             <input type="hidden" :name="`items[${i}][unit_price]`" :value="row.unit_price">
-                            <div class="text-[11px] text-gray-500 mt-1"
+                            <div class="mt-1 text-[11px] text-gray-500"
                                  x-text="mode === 'ttc' ? 'HT ' + num(row.unit_price, 4) : 'TTC ' + num(row.unit_price * (1 + row.tax_rate / 100), 2)"></div>
                         </td>
                         <td class="p-2">
                             <select :name="isAdmin ? `items[${i}][tax_rate]` : null" :disabled="!isAdmin"
                                     x-model.number="row.tax_rate" @change="recalc(row)"
-                                    :class="isAdmin ? '' : 'bg-gray-100'" class="border-gray-300 rounded w-full">
+                                    :class="isAdmin ? '' : 'opacity-60'" class="w-full">
                                 @foreach ($rates as $r)
                                     <option value="{{ $r + 0 }}">{{ $r + 0 }} %</option>
                                 @endforeach
@@ -79,43 +80,52 @@
                         </td>
                         <td class="p-2">
                             <input type="number" step="0.01" min="0" max="100" :name="`items[${i}][discount_percent]`"
-                                   x-model.number="row.discount_percent" class="border-gray-300 rounded w-full">
+                                   x-model.number="row.discount_percent" class="w-full">
                         </td>
-                        <td class="p-2 text-right" x-text="fmt(lineHt(row))"></td>
-                        <td class="p-2"><button type="button" @click="remove(i)" class="text-red-600">✕</button></td>
+                        <td class="p-2 pt-4 text-right font-medium text-gray-900" x-text="fmt(lineHt(row))"></td>
+                        <td class="p-2 pt-3">
+                            <button type="button" @click="remove(i)" class="act act-danger" title="Supprimer la ligne">✕</button>
+                        </td>
                     </tr>
                 </template>
             </tbody>
         </table>
     </div>
 
-    <button type="button" @click="add()" class="mt-3 px-3 py-1 bg-gray-700 text-white rounded text-sm">+ Ajouter une ligne</button>
+    <button type="button" @click="add()" class="act mt-3">+ Ajouter une ligne</button>
 
+    {{-- Totaux --}}
     <div class="mt-6 flex justify-end">
-        <div class="w-full sm:w-80 text-sm space-y-1">
-            <div class="flex justify-between"><span>Total HT</span><span x-text="fmt(subtotal())"></span></div>
+        <div class="w-full space-y-1 text-sm sm:w-80">
+            <div class="flex justify-between"><span class="text-gray-500">Total HT</span><span class="text-gray-900" x-text="fmt(subtotal())"></span></div>
             <template x-for="b in breakdown()" :key="b.rate">
-                <div class="flex justify-between text-gray-600">
+                <div class="flex justify-between text-gray-500">
                     <span>TVA <span x-text="b.rate"></span> % <span class="text-xs">(base <span x-text="fmt(b.base)"></span>)</span></span>
                     <span x-text="fmt(b.tax)"></span>
                 </div>
             </template>
-            <div class="flex justify-between font-bold text-base border-t pt-1"><span>Total TTC</span><span x-text="fmt(total())"></span></div>
+            <div class="flex justify-between border-t border-white/5 pt-2 text-base font-bold text-gray-900">
+                <span>Total TTC</span><span x-text="fmt(total())"></span>
+            </div>
         </div>
     </div>
 
-    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-6">
+    {{-- Conditions / notes --}}
+    <div class="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
             <x-input-label for="terms" value="Conditions" />
-            <textarea id="terms" name="terms" rows="3" class="block w-full border-gray-300 rounded">{{ old('terms', $quote->terms ?? '') }}</textarea>
+            <textarea id="terms" name="terms" rows="3" class="mt-1 block w-full">{{ old('terms', $quote->terms ?? '') }}</textarea>
         </div>
         <div>
             <x-input-label for="notes" value="Notes internes" />
-            <textarea id="notes" name="notes" rows="3" class="block w-full border-gray-300 rounded">{{ old('notes', $quote->notes ?? '') }}</textarea>
+            <textarea id="notes" name="notes" rows="3" class="mt-1 block w-full">{{ old('notes', $quote->notes ?? '') }}</textarea>
         </div>
     </div>
 
-    <div class="mt-6"><x-primary-button>Enregistrer le devis</x-primary-button></div>
+    <div class="mt-8 flex items-center justify-end gap-3 border-t border-white/5 pt-5">
+        <a href="{{ route('quotes.index') }}" class="text-sm text-gray-500 hover:text-gray-900">Annuler</a>
+        <button class="rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-gray-950 hover:bg-gold-400">Enregistrer le devis</button>
+    </div>
 </div>
 
 <script>

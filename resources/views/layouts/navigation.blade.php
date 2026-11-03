@@ -48,7 +48,7 @@
     <x-brand-mark class="h-9 w-9 shrink-0" />
     <div class="min-w-0 leading-tight">
         <div class="truncate font-semibold text-white">{{ config('commerce.company.name') }}</div>
-        <div class="text-[10px] font-medium uppercase tracking-[.2em] text-gold-500">Gestion commerciale</div>
+        <div class="text-[10px] font-medium uppercase tracking-[.2em] text-gold-300">Gestion commerciale</div>
     </div>
 </div>
 
@@ -56,17 +56,17 @@
     @foreach ($groups as $g)
         <div>
             @if ($g['title'])
-                <div class="mb-2 px-3 text-[11px] font-semibold uppercase tracking-widest text-gray-400">{{ $g['title'] }}</div>
+                <div class="mb-2 px-3 text-[11px] font-semibold uppercase tracking-widest text-gray-500">{{ $g['title'] }}</div>
             @endif
 
             <div class="space-y-1">
                 @foreach ($g['items'] as [$label, $url, $icon, $active])
                     <a href="{{ $url }}" @click="sidebar = false"
-                       class="group flex items-center gap-3 rounded-xl border px-3 py-2.5 text-sm transition
+                       class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition
                               {{ $active
-                                  ? 'border-gold-500/50 bg-gold-500/10 font-medium text-gold-400 shadow-[inset_0_0_14px_rgba(201,162,39,.10)]'
-                                  : 'border-transparent text-gray-600 hover:bg-white/5 hover:text-white' }}">
-                        <x-icon :name="$icon" class="h-5 w-5 {{ $active ? 'text-gold-400' : 'text-gold-500/70 group-hover:text-gold-400' }}" />
+                                  ? 'bg-gradient-to-r from-gold-500 to-gold-600 font-medium text-white shadow-lg shadow-gold-500/30'
+                                  : 'text-gray-400 hover:bg-white/5 hover:text-white' }}">
+                        <x-icon :name="$icon" class="h-5 w-5 {{ $active ? 'text-white' : 'text-gray-500 group-hover:text-gold-300' }}" />
                         <span class="truncate">{{ $label }}</span>
                     </a>
                 @endforeach
@@ -77,13 +77,12 @@
 
 <div class="shrink-0 border-t border-white/5 p-3">
     <a href="{{ route('profile.edit') }}" class="flex items-center gap-3 rounded-xl p-2 transition hover:bg-white/5">
-        <span class="flex h-10 w-10 items-center justify-center rounded-full border border-gold-500/60 bg-gold-500/10 text-sm font-semibold text-gold-400">
+        <span class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-gold-500 to-orange-500 text-sm font-semibold text-white">
             {{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 2)) }}
         </span>
         <span class="min-w-0 leading-tight">
             <span class="block truncate text-sm font-semibold text-white">{{ auth()->user()->name }}</span>
-            <span class="block text-[11px] text-gold-500">{{ $admin ? 'Administrateur' : 'Commercial' }}</span>
+            <span class="block text-[11px] text-gray-400">{{ $admin ? 'Administrateur' : 'Commercial' }}</span>
         </span>
     </a>
 </div>
-

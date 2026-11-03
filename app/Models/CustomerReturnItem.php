@@ -30,7 +30,7 @@ class CustomerReturnItem extends Model
 
     public function invoiceItem()
     {
-        return $this->belongsTo(InvoiceItem::class)->withTrashed();
+        return $this->belongsTo(InvoiceItem::class);
     }
 
     public function product()

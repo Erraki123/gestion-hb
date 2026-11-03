@@ -24,8 +24,8 @@
 
         <div class="grid gap-6 lg:grid-cols-2">
             <div class="panel p-5">
-                <h3 class="mb-4 text-lg font-semibold text-gray-100">Détails</h3>
-                <dl class="space-y-3 text-sm text-gray-300">
+                <h3 class="mb-4 text-lg font-semibold text-gray-900">Détails</h3>
+                <dl class="space-y-3 text-sm text-gray-700">
                     <div class="flex justify-between gap-4"><dt>Client</dt><dd>{{ $customerReturn->client?->name }}</dd></div>
                     <div class="flex justify-between gap-4"><dt>Commercial</dt><dd>{{ $customerReturn->commercial?->name }}</dd></div>
                     <div class="flex justify-between gap-4"><dt>Date</dt><dd>{{ optional($customerReturn->return_date)->format('d/m/Y') ?? '—' }}</dd></div>
@@ -37,23 +37,23 @@
             </div>
 
             <div class="panel p-5">
-                <h3 class="mb-4 text-lg font-semibold text-gray-100">Notes</h3>
-                <p class="text-sm text-gray-300">{{ $customerReturn->notes ?: 'Aucune note.' }}</p>
+                <h3 class="mb-4 text-lg font-semibold text-gray-900">Notes</h3>
+                <p class="text-sm text-gray-700">{{ $customerReturn->notes ?: 'Aucune note.' }}</p>
             </div>
         </div>
 
         @if ($customerReturn->status === 'brouillon')
             <div class="panel mt-6 p-5">
-                <h3 class="mb-4 text-lg font-semibold text-gray-100">Modifier le retour</h3>
+                <h3 class="mb-4 text-lg font-semibold text-gray-900">Modifier le retour</h3>
                 <form method="POST" action="{{ route('returns.update', $customerReturn) }}" class="space-y-4">
                     @csrf @method('PUT')
                     <div class="grid gap-4 md:grid-cols-2">
                         <div>
-                            <label for="return_date" class="mb-1 block text-sm text-gray-300">Date de retour</label>
+                            <label for="return_date" class="mb-1 block text-sm text-gray-700">Date de retour</label>
                             <input id="return_date" type="date" name="return_date" value="{{ old('return_date', optional($customerReturn->return_date)->format('Y-m-d')) }}" class="w-full rounded border-gray-300">
                         </div>
                         <div>
-                            <label for="reason" class="mb-1 block text-sm text-gray-300">Motif</label>
+                            <label for="reason" class="mb-1 block text-sm text-gray-700">Motif</label>
                             <select id="reason" name="reason" class="w-full rounded border-gray-300">
                                 @foreach (['defectueux', 'erreur', 'surplus', 'autre'] as $reason)
                                     <option value="{{ $reason }}" @selected(old('reason', $customerReturn->reason) === $reason)>{{ ucfirst($reason) }}</option>
@@ -62,7 +62,7 @@
                         </div>
                     </div>
                     <div>
-                        <label for="notes" class="mb-1 block text-sm text-gray-300">Notes</label>
+                        <label for="notes" class="mb-1 block text-sm text-gray-700">Notes</label>
                         <textarea id="notes" name="notes" rows="3" class="w-full rounded border-gray-300">{{ old('notes', $customerReturn->notes) }}</textarea>
                     </div>
                     <div class="panel overflow-x-auto">

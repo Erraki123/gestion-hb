@@ -30,7 +30,15 @@ class Setting extends Model
     public static function put(array $values): void
     {
         foreach ($values as $name => $value) {
-            static::updateOrCreate(['name' => $name], ['value' => $value === null ? null : (string) $value]);
+            if (is_array($value) || is_object($value)) {
+                $stored = json_encode($value);
+            } elseif ($value === null) {
+                $stored = null;
+            } else {
+                $stored = (string) $value;
+            }
+
+            static::updateOrCreate(['name' => $name], ['value' => $stored]);
         }
 
         Cache::forget('settings.all');

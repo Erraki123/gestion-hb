@@ -25,8 +25,8 @@
             data: {
                 labels: c.labels,
                 datasets: [
-                    { label: 'Facturé TTC', data: c.billed, backgroundColor: '#5B574C', borderRadius: 6, maxBarThickness: 18 },
-                    { label: 'Encaissé', data: c.collected, backgroundColor: '#C9A227', borderRadius: 6, maxBarThickness: 18 },
+                    { label: 'Facturé TTC', data: c.billed, backgroundColor: '#8B5CF6', borderRadius: 6, maxBarThickness: 18 },
+                    { label: 'Encaissé', data: c.collected, backgroundColor: '#10B981', borderRadius: 6, maxBarThickness: 18 },
                 ],
             },
             options: {
@@ -34,7 +34,7 @@
                 plugins: { legend: { position: 'top', align: 'end', labels: { usePointStyle: true, pointStyle: 'circle', boxWidth: 8 } } },
                 scales: {
                     x: { grid: { display: false } },
-                    y: { beginAtZero: true, grid: { color: 'rgba(255,255,255,.05)' }, border: { display: false } },
+                    y: { beginAtZero: true, grid: { color: 'rgba(17,24,39,.06)' }, border: { display: false } },
                 },
             },
         });
@@ -43,7 +43,7 @@
             type: 'doughnut',
             data: {
                 labels: c.status_labels,
-                datasets: [{ data: c.status_data, backgroundColor: ['#C9A227', '#8A867A', '#4A473F', '#DFBF63'], borderColor: '#151412', borderWidth: 4 }],
+                datasets: [{ data: c.status_data, backgroundColor: ['#8B5CF6', '#F59E0B', '#10B981', '#3B82F6', '#EF4444'], borderColor: '#ffffff', borderWidth: 4 }],
             },
             options: {
                 responsive: true, maintainAspectRatio: false, cutout: '68%',

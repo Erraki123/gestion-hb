@@ -4,9 +4,8 @@ import Chart from 'chart.js/auto';
 
 window.Alpine = Alpine;
 window.Chart = Chart;
-Chart.defaults.color = '#A7A397';
-Chart.defaults.borderColor = 'rgba(255,255,255,.06)';
-
+Chart.defaults.color = '#6B7280';
+Chart.defaults.borderColor = 'rgba(17,24,39,.06)';
 /* ---------- تأكيدات أنيقة ----------
    تحوّل تلقائياً onsubmit/onclick="return confirm('...')" إلى نافذة تأكيد */
 const CONFIRM_RE = /confirm\(\s*(['"])([\s\S]*?)\1\s*\)/;

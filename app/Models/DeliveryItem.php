@@ -18,6 +18,6 @@ class DeliveryItem extends Model
     }
 
     public function delivery() { return $this->belongsTo(Delivery::class); }
-    public function orderItem() { return $this->belongsTo(OrderItem::class)->withTrashed(); }
+    public function orderItem() { return $this->belongsTo(OrderItem::class); }
     public function product() { return $this->belongsTo(Product::class)->withTrashed(); }
 }

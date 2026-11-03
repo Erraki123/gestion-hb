@@ -34,7 +34,7 @@ class SupplierInvoice extends Model
 
     public function purchaseOrder()
     {
-        return $this->belongsTo(PurchaseOrder::class)->withTrashed();
+        return $this->belongsTo(PurchaseOrder::class);
     }
 
     public function lines()

@@ -39,7 +39,7 @@
                 <tbody>
                 @forelse ($returns as $r)
                     <tr>
-                        <td class="p-4 font-medium text-gray-100">{{ $r->displayNumber() }}</td>
+                        <td class="p-4 font-medium text-gray-900">{{ $r->displayNumber() }}</td>
                         <td class="p-4">{{ $r->invoice?->displayNumber() }}</td>
                         <td class="p-4">{{ $r->client?->name }}</td>
                         <td class="p-4">{{ optional($r->return_date)->format('d/m/Y') ?? '—' }}</td>
