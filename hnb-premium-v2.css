@@ -1,0 +1,41 @@
+/* HN BLOOM Premium V2 — scoped to authenticated layout; no workflow changes */
+.hnb-ui { --hnb2-gold:#bd934b; --hnb2-dark:#161715; --hnb2-cream:#f7f5f0; --hnb2-border:#e7e1d5; background:var(--hnb2-cream) }
+.hnb-ui .page-head { background:linear-gradient(112deg,#151614 0%,#25231c 100%)!important;border-bottom:1px solid #ae884d!important }
+.hnb-ui .page-head >div {padding-top:1.15rem!important;padding-bottom:1.15rem!important}
+.hnb-ui .page-head h2 {font-size:clamp(1.22rem,2vw,1.7rem)!important;font-weight:750!important}
+.hnb-ui main {background:var(--hnb2-cream)!important;min-height:calc(100vh - 10rem)}
+.hnb-ui .hnb-topbar {min-height:4rem;border-bottom:1px solid var(--hnb2-border)!important}
+.hnb-ui main > div {max-width:86rem}
+/* Dashboard : visual hierarchy and less wasted space */
+.hnb-ui .hnb-dash-v2 {padding-top:1.15rem!important;padding-bottom:2rem!important;row-gap:1.15rem!important}
+.hnb-ui .hnb-dash-v2 > section {box-shadow:0 7px 22px rgba(40,31,17,.045)!important}
+.hnb-ui .hnb-dash-v2 .hnb-priority-card {display:flex;flex-direction:column;justify-content:space-between;min-height:105px;border-radius:13px!important;background:linear-gradient(140deg,#fff,#fcfaf5);border:1px solid #e8ddcb!important;transition:transform .18s ease,border-color .18s ease}
+.hnb-ui .hnb-dash-v2 .hnb-priority-card:hover {transform:translateY(-2px);border-color:#be995b!important}
+.hnb-ui .hnb-dash-v2 .hnb-priority-card span.text-2xl {color:#232018!important;font-size:1.6rem}
+.hnb-ui .hnb-dash-v2 .hnb-section-label {font-size:.76rem;font-weight:750;letter-spacing:.045em;text-transform:uppercase;color:#6f5a38}
+.hnb-ui .hnb-dash-v2 form:has(input[type=date]) {border:1px solid var(--hnb2-border)!important;box-shadow:0 2px 12px rgba(26,20,9,.025)!important}
+/* Prospection: less stacked visual noise, clear search/table treatment */
+.hnb-ui .hnb-prospects-v2 {max-width:86rem!important;padding-top:1rem!important}
+.hnb-ui .hnb-prospects-v2 .p-summary {margin-bottom:.55rem;color:#786d5d}
+.hnb-ui .hnb-prospects-v2 .p-table {border:1px solid #e1d9c9!important;box-shadow:0 8px 24px rgba(31,27,17,.055)!important}
+.hnb-ui .hnb-prospects-v2 .p-table thead {background:#1a1b18!important}
+.hnb-ui .hnb-prospects-v2 .p-table th {padding:.72rem .8rem!important}
+.hnb-ui .hnb-prospects-v2 .p-table tbody tr {background:#fff!important}
+.hnb-ui .hnb-prospects-v2 .p-table tbody tr:nth-child(even) {background:#fcfbf8!important}
+.hnb-ui .hnb-prospects-v2 .p-table tbody tr:hover {background:#fff9e9!important}
+.hnb-ui main :is(input,select,textarea) {transition:border-color .14s ease,box-shadow .14s ease}
+.hnb-ui main :is(input,select,textarea):focus {border-color:#ae884d!important;--tw-ring-color:#bd934b!important}
+.hnb-ui main :is(button,a):focus-visible {outline:2px solid #ae884d;outline-offset:3px}
+.hnb-ui main :is(button,a):disabled {cursor:not-allowed;opacity:.65}
+/* Respect semantic error/success, don't override their text or fills */
+@media (max-width:768px) {
+ .hnb-ui .hnb-topbar {padding-left:.65rem!important;padding-right:.65rem!important;gap:.5rem!important}
+ .hnb-ui .page-head >div {padding:1rem!important}
+ .hnb-ui .hnb-dash-v2 {padding-left:.8rem!important;padding-right:.8rem!important}
+ .hnb-ui .hnb-prospects-v2 {padding-left:.75rem!important;padding-right:.75rem!important}
+ .hnb-ui main .overflow-x-auto {max-width:calc(100vw - 1.5rem);-webkit-overflow-scrolling:touch}
+ .hnb-ui main table {min-width:540px}
+ .hnb-ui .hnb-dash-v2 form:has(input[type=date]) {gap:.45rem}
+ .hnb-ui .hnb-dash-v2 input[type=date] {max-width:100%;min-width:0}
+}
+@media (prefers-reduced-motion:reduce) {.hnb-ui *{scroll-behavior:auto!important;transition-duration:.01ms!important;animation-duration:.01ms!important}}

@@ -1,0 +1,28 @@
+                    {{-- atlas-6o-contact-decisions: manual review, no CRM import --}}
+                    @if($atlasSuggestion)
+                      @php
+                        $atlasDecisionService = app(\App\Services\AtlasContactDecisionService::class);
+                        $atlasDecision = $atlasDecisionService->decision($candidate, $atlasSuggestion);
+                        $atlasFingerprint = $atlasDecisionService->fingerprint($atlasSuggestion);
+                      @endphp
+                      <section class="atlas-6o-review" style="margin-top:10px;padding:12px;border:1px solid #e6dbc4;border-radius:10px;background:#faf9f6" aria-label="Contrôle des coordonnées">
+                        <p style="font-size:12px;margin:0 0 8px"><strong>Suivi de vérification :</strong>
+                          @if($atlasDecision?->decision === 'reviewed')
+                            <span style="color:#25634a">Source consultée et contrôlée manuellement — contact non confirmé par l'entreprise</span>
+                          @elseif($atlasDecision?->decision === 'rejected')
+                            <span style="color:#a34235">Suggestion écartée</span>
+                          @else
+                            <span style="color:#936621">À examiner</span>
+                          @endif
+                        </p>
+                        @if($errors->has('contact_review'))<p style="color:#b91c1c;font-size:12px">{{ $errors->first('contact_review') }}</p>@endif
+                        <form action="{{ route('admin.atlas.contacts.decision', $candidate) }}" method="POST" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px">
+                          @csrf
+                          <input type="hidden" name="fingerprint" value="{{ $atlasFingerprint }}">
+                          <label style="font-size:11px;color:#57534e;display:flex;gap:5px;align-items:center"><input type="checkbox" name="source_checked" value="1"> J'ai consulté la source (pour contrôle)</label>
+                          <button name="decision" value="reviewed" type="submit" style="background:#161616;color:#efd39c;border:0;border-radius:7px;padding:8px 10px;font-size:11px;cursor:pointer">Marquer comme contrôlé</button>
+                          <button name="decision" value="rejected" type="submit" style="background:white;color:#7f1d1d;border:1px solid #e5d6d2;border-radius:7px;padding:8px 10px;font-size:11px;cursor:pointer">Écarter</button>
+                        </form>
+                        <p style="font-size:11px;color:#78716c;margin:8px 0 0">La validation ne copie rien vers Clients ou Prospects et n'envoie aucun message.</p>
+                      </section>
+                    @endif

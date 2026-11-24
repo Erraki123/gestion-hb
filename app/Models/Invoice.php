@@ -11,15 +11,30 @@ class Invoice extends Model
 {
     use SoftDeletes, LogsActivity;
 
+    /** Factures qui attendent encore un paiement */
+    public const OPEN = ['emise', 'partiellement_payee'];
+
+    /** Factures comptées (chiffre d'affaires, rapports, commissions, exports) */
+    public const COUNTED = ['emise', 'partiellement_payee', 'cheque_en_attente', 'payee'];
+
+    /** Factures entièrement couvertes (payées, ou couvertes par un chèque non encaissé) */
+    public const COVERED = ['cheque_en_attente', 'payee'];
+
     protected $fillable = [
         'number', 'type', 'parent_id', 'order_id', 'client_id', 'commercial_id', 'status',
         'issue_date', 'due_date', 'subtotal_ht', 'tax_rate', 'tax_amount',
-        'total_ttc', 'amount_paid', 'terms', 'notes',
+        'transport_amount', 'transport_note', 'transport_remind_at', 'transport_carrier', 'transport_phone',
+        'transport_alarm_stopped_at', 'transport_alarm_stopped_by',
+        'installation_amount', 'installation_note',
+        'total_ttc', 'amount_paid', 'amount_cashed', 'amount_cheque_pending', 'stock_moved', 'terms', 'notes',
     ];
 
     protected function casts(): array
     {
-        return ['issue_date' => 'date', 'due_date' => 'date'];
+        return [
+            'issue_date' => 'date', 'due_date' => 'date', 'stock_moved' => 'boolean',
+            'transport_remind_at' => 'date', 'transport_alarm_stopped_at' => 'datetime',
+        ];
     }
 
     protected static function booted(): void
@@ -48,7 +63,7 @@ class Invoice extends Model
     public function scopeOverdue(Builder $q): Builder
     {
         return $q->where('type', 'facture')
-            ->whereIn('status', ['emise', 'partiellement_payee'])
+            ->whereIn('status', self::OPEN)
             ->whereDate('due_date', '<', today());
     }
 
@@ -59,6 +74,20 @@ class Invoice extends Model
             ->whereHas('parent', fn ($parentQuery) => $parentQuery->where('status', '!=', 'annulee'));
     }
 
+    /** Chèques valides, pas encore encaissés */
+    public function pendingCheques()
+    {
+        return $this->payments
+            ->where('status', 'valide')
+            ->where('method', 'cheque')
+            ->where('cheque_status', 'en_attente');
+    }
+
+    public function hasPendingCheque(): bool
+    {
+        return (float) $this->amount_cheque_pending > 0.005;
+    }
+
     public function isDraft(): bool { return $this->status === 'brouillon'; }
 
     public function creditedAmount(): float
@@ -67,6 +96,12 @@ class Invoice extends Model
             ->where('type', 'avoir')
             ->where('status', 'emise')
             ->sum('total_ttc'), 2);
+    }
+
+    /** Transport + installation : ajoutés au total, sans TVA, hors base de commission */
+    public function extrasTotal(): float
+    {
+        return round((float) $this->transport_amount + (float) $this->installation_amount, 2);
     }
 
     public function balance(): float
@@ -82,7 +117,7 @@ class Invoice extends Model
     public function isOverdue(): bool
     {
         return $this->type === 'facture'
-            && in_array($this->status, ['emise', 'partiellement_payee'], true)
+            && in_array($this->status, self::OPEN, true)
             && $this->due_date
             && $this->due_date->lt(today());
     }

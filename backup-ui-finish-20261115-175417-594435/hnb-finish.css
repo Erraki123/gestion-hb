@@ -1,0 +1,121 @@
+/* HN BLOOM | UI Finishing Layer — Sprint UI-1
+   Loaded only in the authenticated app layout. No business-logic changes. */
+.hnb-ui {
+  --hnb-ink: #12120f;
+  --hnb-muted: #6f6b60;
+  --hnb-gold: #b58b38;
+  --hnb-gold-soft: #eee1c1;
+  --hnb-border: #e6e1d6;
+  --hnb-canvas: #f7f6f2;
+  --hnb-panel: #fff;
+  background: var(--hnb-canvas);
+  color: var(--hnb-ink);
+  -webkit-font-smoothing: antialiased;
+}
+.hnb-ui > .min-h-screen,
+.hnb-ui main { background: var(--hnb-canvas) !important; }
+.hnb-ui main { min-width: 0; }
+.hnb-ui .page-head {
+  background: #11120f !important;
+  border-color: rgba(194,161,95,.25) !important;
+  color: #fff;
+  position: relative;
+  overflow: hidden;
+}
+.hnb-ui .page-head::after {
+  content: ""; position:absolute; right:-8rem; top:-15rem; width:30rem; height:30rem;
+  background: radial-gradient(circle,rgba(195,156,75,.13), transparent 65%);
+  pointer-events:none;
+}
+.hnb-ui .page-head > div { position:relative; z-index:1; padding-top:1.7rem; padding-bottom:1.7rem; }
+.hnb-ui .page-head h2 { color:#fff !important; font-weight:750; letter-spacing:-.035em; font-size:clamp(1.25rem,2.6vw,1.85rem); }
+.hnb-ui .page-head p { color:#d1cabc !important; }
+.hnb-ui .page-head a { color:#e9ca88; }
+.hnb-ui .page-head h2::before { background:linear-gradient(#e9cb80,#a47425); }
+.hnb-ui .hnb-topbar {
+  background:rgba(255,255,255,.96) !important;
+  border-color:var(--hnb-border) !important;
+  box-shadow:0 4px 20px rgba(32,24,9,.035);
+}
+.hnb-ui aside { background:linear-gradient(172deg,#121310,#1b1a16 62%,#272113) !important; }
+.hnb-ui aside nav a { border-radius:.65rem !important; margin-bottom:2px; }
+.hnb-ui aside nav a[aria-current="page"] { background:rgba(194,158,85,.14) !important; border-color:#c7a259 !important; }
+.hnb-ui aside nav a:hover { background:rgba(255,255,255,.075); }
+.hnb-ui main > div { max-width: 90rem; }
+/* Reusable containers: covers existing legacy panels and newer Tailwind cards */
+.hnb-ui main .panel,
+.hnb-ui main .p-table,
+.hnb-ui main section.bg-white,
+.hnb-ui main div.bg-white.rounded-2xl,
+.hnb-ui main div.bg-white.rounded-xl,
+.hnb-ui main article.rounded-xl {
+  background:var(--hnb-panel) !important;
+  border-color:var(--hnb-border) !important;
+  border-radius:1rem !important;
+  box-shadow:0 1px 2px rgba(31,25,13,.025),0 10px 32px rgba(31,25,13,.035);
+}
+.hnb-ui main section.bg-white > .bg-gray-950,
+.hnb-ui main section.bg-white > .bg-black,
+.hnb-ui main section > .bg-gray-950 {
+  background:#191914 !important;
+  border-bottom:1px solid #4d3e22;
+}
+.hnb-ui main .rounded-2xl.border-yellow-200.bg-yellow-50,
+.hnb-ui main .rounded-xl.border-amber-300.bg-amber-50 {
+  background:linear-gradient(120deg,#fffaf0,#fff) !important;
+  border-color:#e7d2a7 !important;
+}
+.hnb-ui main :is(h3,h4).font-semibold { letter-spacing:-.02em; }
+.hnb-ui main table { width:100%; border-collapse:separate; border-spacing:0; }
+.hnb-ui main table thead { background:#202019 !important; }
+.hnb-ui main table thead th { color:#f8f1e5 !important; border-bottom:2px solid #af8640; padding:.8rem .9rem; font-weight:650; font-size:.68rem; }
+.hnb-ui main table tbody td { padding:.85rem .9rem; border-color:#eee9df; vertical-align:middle; }
+.hnb-ui main table tbody tr:hover { background:#fcf8ee !important; }
+.hnb-ui main .overflow-x-auto { scrollbar-color:#d0bd98 transparent; }
+.hnb-ui main input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+.hnb-ui main select,
+.hnb-ui main textarea {
+  border-color:#d7d0c3; background-color:#fff; color:#1d1a15; border-radius:.68rem;
+  min-height:2.55rem;
+}
+.hnb-ui main textarea { min-height: 4.5rem; }
+.hnb-ui main :is(input,select,textarea):focus-visible,
+.hnb-ui button:focus-visible,
+.hnb-ui a:focus-visible { outline:2px solid #c49644; outline-offset:2px; }
+/* Buttons: preserve danger/success meaning and avoid changing disabled states */
+.hnb-ui main button:not(:disabled),
+.hnb-ui main a[class*="px-"][class*="py-"] {
+  transition:background-color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+.hnb-ui main button:not(:disabled):hover,
+.hnb-ui main a[class*="px-"][class*="py-"]:hover { box-shadow:0 3px 12px rgba(30,20,9,.10); }
+.hnb-ui main :is(button,a).bg-black,
+.hnb-ui main :is(button,a).bg-gray-950,
+.hnb-ui main :is(button,a).bg-stone-950 { background:#1b1b17 !important; color:#f5dfaa !important; }
+.hnb-ui main :is(button,a).bg-black:hover,
+.hnb-ui main :is(button,a).bg-gray-950:hover,
+.hnb-ui main :is(button,a).bg-stone-950:hover { background:#363023 !important; }
+.hnb-ui main :is(button,a).bg-green-700 { background:#247354 !important; }
+.hnb-ui main :is(button,a).bg-green-700:hover { background:#18583f !important; }
+.hnb-ui main :is(button,a).border-red-600 { border-color:#b74c49 !important; color:#a53633 !important; }
+.hnb-ui main .p-status { border-radius:999px; }
+.hnb-ui main .grid > .rounded-2xl.border,
+.hnb-ui main .grid > .rounded-xl.border { box-shadow:0 7px 20px rgba(35,27,12,.035); }
+.hnb-ui main .shadow-sm { box-shadow:0 5px 22px rgba(22,18,12,.04); }
+.hnb-ui main nav[role="navigation"] a { min-width:2.5rem; }
+.hnb-ui footer { color:#817a6b; }
+/* AI widget: prevent it clipping or being hidden behind header/dialog */
+.hnb-ui [id*="ai-floating"], .hnb-ui [id*="crm-ai"] { max-width:calc(100vw - 1rem); }
+@media (max-width: 640px) {
+ .hnb-ui .page-head > div { padding:1.15rem 1rem; }
+ .hnb-ui main > div { padding-left:1rem !important; padding-right:1rem !important; }
+ .hnb-ui main .grid { gap:.75rem; }
+ .hnb-ui main table thead th,
+ .hnb-ui main table tbody td { padding:.72rem .68rem; }
+ .hnb-ui main section.bg-white > div:first-child { padding:1rem; }
+ .hnb-ui .hnb-topbar { gap:.5rem; padding-left:.75rem; padding-right:.75rem; }
+ .hnb-ui main button, .hnb-ui main a { overflow-wrap:anywhere; }
+}
+@media (prefers-reduced-motion:reduce) {
+ .hnb-ui *, .hnb-ui *::before, .hnb-ui *::after { animation-duration:.01ms !important; transition-duration:.01ms !important; scroll-behavior:auto !important; }
+}

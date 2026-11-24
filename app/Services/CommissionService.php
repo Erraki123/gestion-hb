@@ -16,7 +16,7 @@ class CommissionService
         DB::transaction(function () use ($invoice) {
             $inv = $this->lockInvoice($invoice->id);
 
-            if ($inv->type !== 'facture' || ! in_array($inv->status, ['emise', 'partiellement_payee', 'payee'], true)) {
+            if ($inv->type !== 'facture' || ! in_array($inv->status, Invoice::COUNTED, true)) {
                 return;
             }
 
@@ -102,12 +102,27 @@ class CommissionService
             if ($p->status === 'valide') {
                 $rule = CommissionRule::currentFor($inv->commercial_id);
 
-                if ($rule && $rule->method === 'payments_percent' && ! $this->activeExists('payment', $inv->id, $p->id)) {
+                // « % des paiements » et « % selon les produits » : la commission naît à chaque paiement reçu
+                if ($rule && in_array($rule->method, ['payments_percent', 'product_percent'], true)
+                    && ! $this->activeExists('payment', $inv->id, $p->id)) {
                     $base = $this->base((float) $p->amount, $inv);
-                    $this->create($rule, 'payment', $inv, $p, $base, round($base * (float) $rule->value / 100, 2));
+                    $rate = $rule->method === 'product_percent'
+                        ? $this->productRate($rule, $inv)
+                        : (float) $rule->value;
+
+                    $this->create($rule, 'payment', $inv, $p, $base, round($base * $rate / 100, 2), $rate);
                 }
             }
 
+            $this->refreshFixed($inv);
+        });
+    }
+
+    /** Chèque encaissé : l'argent est entré, la commission « montant fixe » peut naître */
+    public function onChequeCashed(Payment $payment): void
+    {
+        DB::transaction(function () use ($payment) {
+            $inv = $this->lockInvoice($payment->invoice_id);
             $this->refreshFixed($inv);
         });
     }
@@ -145,7 +160,7 @@ class CommissionService
             }
             $rule = CommissionRule::currentFor($inv->commercial_id);
             if ($rule && $rule->method === 'fixed_per_sale') {
-                $this->create($rule, 'fixed', $inv, null, (float) $inv->total_ttc, round((float) $rule->value, 2));
+                $this->create($rule, 'fixed', $inv, null, (float) $inv->total_ttc - (float) $inv->transport_amount - (float) $inv->installation_amount, round((float) $rule->value, 2));
             }
         } elseif ($active) {
             $this->reverse($active, 'Facture plus intégralement payée');
@@ -188,7 +203,7 @@ class CommissionService
         ]);
     }
 
-    private function create(CommissionRule $rule, string $kind, Invoice $inv, ?Payment $payment, float $base, float $amount): void
+    private function create(CommissionRule $rule, string $kind, Invoice $inv, ?Payment $payment, float $base, float $amount, ?float $rate = null): void
     {
         if ($amount <= 0) {
             return;
@@ -201,12 +216,42 @@ class CommissionService
             'invoice_id'  => $inv->id,
             'payment_id'  => $payment?->id,
             'method'      => $rule->method,
-            'rate_value'  => $rule->value,
+            'rate_value'  => $rate ?? $rule->value,
             'base_amount' => round($base, 2),
             'amount'      => $amount,
             'status'      => 'en_attente',
             'computed_at' => now(),
         ]);
+    }
+
+    /**
+     * Taux moyen de la facture pour la méthode « selon les produits » :
+     * chaque ligne utilise le taux spécial de son produit, sinon le taux général.
+     * Le taux de la facture = moyenne pondérée par le montant de chaque ligne (après remise),
+     * donc un paiement partiel reçoit la même part de commission que la facture entière.
+     */
+    private function productRate(CommissionRule $rule, Invoice $inv): float
+    {
+        $special = $rule->productRates()->pluck('rate', 'product_id');
+        $general = (float) $rule->value;
+        $useHt   = config('commerce.commission_base') === 'ht';
+
+        $sumBase = 0.0;
+        $sumComm = 0.0;
+
+        foreach ($inv->items()->get() as $item) {
+            $ht   = (float) $item->line_total_ht;
+            $base = $useHt ? $ht : $ht * (1 + (float) $item->tax_rate / 100);
+            // Ligne libre (sans produit) : toujours le taux général du commercial
+            $rate = $item->product_id
+                ? (float) $special->get($item->product_id, $general)
+                : $general;
+
+            $sumBase += $base;
+            $sumComm += $base * $rate;
+        }
+
+        return $sumBase > 0 ? round($sumComm / $sumBase, 4) : $general;
     }
 
     private function activeExists(string $kind, int $invoiceId, ?int $paymentId = null): bool
@@ -220,11 +265,19 @@ class CommissionService
 
     private function base(float $amount, Invoice $inv): float
     {
-        if (config('commerce.commission_base') !== 'ht') {
+        $total  = (float) $inv->total_ttc;
+        $extras = (float) $inv->transport_amount + (float) $inv->installation_amount;
+
+        if ($total <= 0) {
             return round($amount, 2);
         }
 
-        $ratio = (float) $inv->total_ttc > 0 ? (float) $inv->subtotal_ht / (float) $inv->total_ttc : 1.0;
+        // Transport et installation ne comptent jamais dans la base de commission :
+        //  - base HT  : part des produits en HT (subtotal_ht ne contient pas ces montants)
+        //  - base TTC : part des produits en TTC (total moins transport et installation)
+        $ratio = config('commerce.commission_base') === 'ht'
+            ? (float) $inv->subtotal_ht / $total
+            : max(0.0, $total - $extras) / $total;
 
         return round($amount * $ratio, 2);
     }

@@ -1,10 +1,10 @@
 import defaultTheme from 'tailwindcss/defaultTheme';
 import forms from '@tailwindcss/forms';
 
-// gold و indigo صارا بنفسجياً (اللون الأساسي)
-const brand = {
-    50: '#F5F3FF', 100: '#EDE9FE', 200: '#DDD6FE', 300: '#C4B5FD', 400: '#8B5CF6',
-    500: '#7C3AED', 600: '#6D28D9', 700: '#5B21B6', 800: '#4C1D95', 900: '#3B0F7A', 950: '#2E1065',
+// Palette Or : de l'or clair (300) au bronze foncé (800-950)
+const gold = {
+    50: '#FBF6E8', 100: '#F6EBC9', 200: '#F3E3B0', 300: '#EBCB74', 400: '#D9B04A',
+    500: '#C79A2E', 600: '#A67C1C', 700: '#8A6A1E', 800: '#4A3A14', 900: '#2E2410', 950: '#1C1710',
 };
 
 /** @type {import('tailwindcss').Config} */
@@ -18,9 +18,9 @@ export default {
         extend: {
             fontFamily: { sans: ['Inter Variable', ...defaultTheme.fontFamily.sans] },
             colors: {
-                gold: brand,
-                indigo: brand,
-                gray: { 950: '#0B1020' }, // يُدمج مع الرمادي الافتراضي (الطبيعي الفاتح)
+                gold,
+                indigo: gold, // les anciennes classes indigo deviennent or
+                gray: { 950: '#0A0A0A' }, // noir pur pour la barre latérale
             },
         },
     },

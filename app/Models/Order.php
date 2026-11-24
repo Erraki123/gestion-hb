@@ -13,11 +13,13 @@ class Order extends Model
     protected $fillable = [
         'number', 'quote_id', 'client_id', 'commercial_id', 'status', 'stock_deducted',
         'subtotal_ht', 'tax_rate', 'tax_amount', 'total_ttc', 'notes',
+        'approval_status', 'approval_requested_by', 'approval_requested_at',
+        'approval_decided_by', 'approval_decided_at', 'approval_comment',
     ];
 
     protected function casts(): array
     {
-        return ['stock_deducted' => 'boolean'];
+        return ['stock_deducted' => 'boolean', 'approval_requested_at' => 'datetime', 'approval_decided_at' => 'datetime'];
     }
 
     protected static function booted(): void

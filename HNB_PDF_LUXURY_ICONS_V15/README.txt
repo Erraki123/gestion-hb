@@ -1,0 +1,1 @@
+HN BLOOM Luxury Icons V15. Extract ZIP in Laravel root, then run INSTALL_HNB_PDF_ICONS_V15.ps1. Changes only 3 PDF blade files and 10 transparent icon PNGs. No app code/DB/approval changes. Based on V14 layout to avoid blank pages. Test PDFs in your local DomPDF environment.

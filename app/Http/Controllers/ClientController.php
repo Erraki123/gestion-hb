@@ -10,30 +10,82 @@ use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Storage;
 
 class ClientController extends Controller
 {
     public function index(Request $request)
     {
+        $isAdmin = auth()->user()->isAdmin();
+        $term    = trim((string) ($request->input('name') ?: $request->input('q')));
+        $phone   = trim((string) $request->input('phone'));
+        $city    = trim((string) $request->input('city'));
+        $status  = in_array($request->input('status'), ['prospect', 'actif', 'inactif'], true)
+            ? $request->input('status') : null;
+
+        // Le scope global « owner » limite déjà le commercial à ses propres clients
         $clients = Client::with('commercial')
-            ->when($request->q, fn ($q, $s) => $q->where(function ($w) use ($s) {
-                $w->where('name', 'like', "%{$s}%")
-                  ->orWhere('company', 'like', "%{$s}%")
-                  ->orWhere('phone', 'like', "%{$s}%")
-                  ->orWhere('email', 'like', "%{$s}%");
-            }))
-            ->when($request->status, fn ($q, $s) => $q->where('status', $s))
-            ->when(auth()->user()->isAdmin() && $request->commercial_id,
-                fn ($q, $id) => $q->where('commercial_id', $id))
+            ->when($term !== '', function ($q) use ($term) {
+                $like = '%' . $this->escapeLike($term) . '%';
+                $q->where(fn ($w) => $w->where('name', 'like', $like)
+                    ->orWhere('company', 'like', $like)
+                    ->orWhere('phone', 'like', $like)
+                    ->orWhere('email', 'like', $like));
+            })
+            ->when($phone !== '', fn ($q) => $q->where('phone', 'like', '%' . $this->escapeLike($phone) . '%'))
+            ->when($city !== '', fn ($q) => $q->where('city', 'like', '%' . $this->escapeLike($city) . '%'))
+            ->when($status, fn ($q, $s) => $q->where('status', $s))
+            ->when($isAdmin && $request->filled('commercial_id'),
+                fn ($q) => $q->where('commercial_id', (int) $request->input('commercial_id')))
             ->latest()
             ->paginate(15)
             ->withQueryString();
 
-        $commerciaux = auth()->user()->isAdmin()
+        // Appel AJAX du filtre : on renvoie seulement les lignes et la pagination
+        if ($request->expectsJson()) {
+            return response()->json([
+                'rows'  => view('clients._rows', ['clients' => $clients])->render(),
+                'links' => (string) $clients->links(),
+                'total' => $clients->total(),
+            ]);
+        }
+
+        $commerciaux = $isAdmin
             ? User::where('role', 'commercial')->orderBy('name')->get()
             : collect();
 
         return view('clients.index', compact('clients', 'commerciaux'));
+    }
+
+    /**
+     * Recherche rapide (AJAX) pour le champ <x-select-search>.
+     * Format générique : [{id, label, sub}] — 20 résultats maximum.
+     */
+    public function search(Request $request)
+    {
+        $s = trim((string) $request->query('q', ''));
+
+        $clients = Client::query()
+            ->when($s !== '', function ($q) use ($s) {
+                $like = '%' . $this->escapeLike($s) . '%';
+                $q->where(fn ($w) => $w->where('name', 'like', $like)
+                    ->orWhere('company', 'like', $like)
+                    ->orWhere('phone', 'like', $like));
+            })
+            ->orderBy('name')
+            ->limit(20)
+            ->get(['id', 'name', 'company', 'phone', 'city']);
+
+        return response()->json($clients->map(fn ($c) => [
+            'id'    => $c->id,
+            'label' => $c->name,
+            'sub'   => collect([$c->company, $c->city, $c->phone])->filter()->implode(' · '),
+        ])->values());
+    }
+
+    private function escapeLike(string $value): string
+    {
+        return addcslashes($value, '\\%_');
     }
 
     public function create()
@@ -57,7 +109,7 @@ class ClientController extends Controller
             ? $request->validate(['commercial_id' => ['required', 'exists:users,id']])['commercial_id']
             : auth()->id();
 
-        $client = DB::transaction(function () use ($data, $request) {
+        DB::transaction(function () use ($data, $request) {
             $client = Client::create($data);
 
             foreach ((array) $request->file('photos', []) as $file) {
@@ -73,11 +125,10 @@ class ClientController extends Controller
                     'size'          => $file->getSize(),
                 ]);
             }
-
-            return $client;
         });
 
-        return redirect()->route('clients.show', $client)
+        // Après l'enregistrement : retour à la table des clients
+        return redirect()->route('clients.index')
             ->with('success', 'Client créé avec succès.');
     }
 
@@ -90,7 +141,7 @@ class ClientController extends Controller
         // Solde dû par le client : factures émises non soldées
         $due = Invoice::where('client_id', $client->id)
             ->where('type', 'facture')
-            ->whereIn('status', ['emise', 'partiellement_payee'])
+            ->whereIn('status', Invoice::OPEN)
             ->get()
             ->sum(fn ($i) => $i->balance());
 
@@ -104,7 +155,7 @@ class ClientController extends Controller
         $moves = collect();
 
         Invoice::where('client_id', $client->id)->where('type', 'facture')
-            ->whereIn('status', ['emise', 'partiellement_payee', 'payee'])->get()
+            ->whereIn('status', Invoice::COUNTED)->get()
             ->each(fn ($i) => $moves->push([
                 'date' => $i->issue_date->copy(), 'order' => 0,
                 'label' => 'Facture ' . $i->number, 'debit' => (float) $i->total_ttc, 'credit' => 0.0,
@@ -121,7 +172,9 @@ class ClientController extends Controller
         Payment::with('invoice')->where('client_id', $client->id)->where('status', 'valide')->get()
             ->each(fn ($p) => $moves->push([
                 'date' => $p->paid_at->copy(), 'order' => 1,
-                'label' => 'Paiement ' . $p->number . ' (' . $p->methodLabel() . ') — ' . $p->invoice?->number,
+                'label' => 'Paiement ' . $p->number . ' (' . $p->methodLabel() . ')'
+                    . ($p->cheque_status === 'en_attente' ? ' [chèque non encaissé]' : '')
+                    . ' — ' . $p->invoice?->number,
                 'debit' => 0.0, 'credit' => (float) $p->amount,
             ]));
 
@@ -161,7 +214,41 @@ class ClientController extends Controller
             ])['commercial_id'];
         }
 
-        $client->update($data);
+        $request->validate([
+            'files'    => ['nullable', 'array', 'max:20'],
+            'files.*'  => ['nullable', 'file', 'mimes:jpg,jpeg,png,webp,pdf', 'max:5120'], // 5 Mo / fichier
+            'remove'   => ['nullable', 'array'],
+            'remove.*' => ['integer'],
+        ]);
+
+        DB::transaction(function () use ($client, $data, $request) {
+            $client->update($data);
+
+            // Fichiers cochés « Supprimer » (uniquement ceux de CE client)
+            $toRemove = $client->attachments()
+                ->whereIn('id', (array) $request->input('remove', []))
+                ->get();
+
+            foreach ($toRemove as $attachment) {
+                Storage::disk('local')->delete($attachment->path);
+                $attachment->delete();
+            }
+
+            // Nouveaux fichiers
+            foreach ((array) $request->file('files', []) as $file) {
+                if (! $file) {
+                    continue;
+                }
+
+                $client->attachments()->create([
+                    'user_id'       => auth()->id(),
+                    'original_name' => $file->getClientOriginalName(),
+                    'path'          => $file->store("clients/{$client->id}", 'local'),
+                    'mime_type'     => $file->getMimeType(),
+                    'size'          => $file->getSize(),
+                ]);
+            }
+        });
 
         return redirect()->route('clients.show', $client)
             ->with('success', 'Client mis à jour.');

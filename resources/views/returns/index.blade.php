@@ -1,61 +1,96 @@
+@php
+    $filters = [
+        'q'      => (string) request('q', ''),
+        'status' => (string) request('status', ''),
+        'from'   => (string) request('from', ''),
+        'to'     => (string) request('to', ''),
+    ];
+@endphp
 <x-app-layout>
     <x-slot name="header">
-        <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="grid items-center gap-3 text-center lg:grid-cols-3">
+            <div class="flex justify-center lg:justify-start">
+                <a href="{{ route('invoices.index') }}"
+                   class="inline-flex items-center gap-1 rounded-lg border border-gold-300 bg-gold-100 px-3 py-1.5 text-xs font-semibold text-gray-900 shadow-sm transition hover:bg-gold-200">← Factures</a>
+            </div>
+
             <div>
-                <h2>Retours clients</h2>
-                <p class="mt-1 text-sm text-gray-500">{{ $returns->total() }} retour(s) au total</p>
+                <h2 class="justify-center !text-lg !leading-tight">Retours clients</h2>
+                <p class="text-xs text-gray-500"
+                   x-data="{ n: {{ $returns->total() }} }" x-on:list-total.window="n = $event.detail">
+                    <span x-text="n">{{ $returns->total() }}</span> résultat(s)
+                </p>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-center gap-3 text-xs lg:justify-end">
+                <a href="{{ route('receivables.index') }}" class="link">Créances</a>
+                <a href="{{ route('payments.index') }}" class="link">Paiements</a>
             </div>
         </div>
     </x-slot>
 
-    <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    <div class="list-compact max-w-6xl mx-auto px-4 py-3 sm:px-6 lg:px-8 space-y-3">
         @if (session('success'))
-            <div class="mb-4 rounded-xl border border-green-200 bg-green-100 p-3 text-sm text-green-800">{{ session('success') }}</div>
+            <div class="rounded-xl border border-green-200 bg-green-100 p-2.5 text-sm text-green-800">{{ session('success') }}</div>
+        @endif
+        @if ($errors->any())
+            <div class="rounded-xl border border-red-200 bg-red-100 p-2.5 text-sm text-red-800">@foreach ($errors->all() as $e)<div>{{ $e }}</div>@endforeach</div>
         @endif
 
-        <form method="GET" class="panel mb-5 flex flex-wrap gap-3 p-3">
-            <input type="text" name="q" value="{{ request('q') }}" placeholder="N° ou client..." class="w-full sm:w-64">
-            <select name="status" class="w-full sm:w-auto">
-                <option value="">Tous les statuts</option>
-                @foreach (['brouillon', 'valide'] as $s)
-                    <option value="{{ $s }}" @selected(request('status') === $s)>{{ ucfirst($s) }}</option>
-                @endforeach
-            </select>
-            <button class="act">Filtrer</button>
-        </form>
+        <div x-data="listTable(@js([
+                'url'     => route('returns.index'),
+                'filters' => $filters,
+                'rows'    => view('returns._rows', ['returns' => $returns])->render(),
+                'links'   => (string) $returns->links(),
+                'total'   => $returns->total(),
+            ]))" class="space-y-3">
 
-        <div class="panel overflow-x-auto">
-            <table class="min-w-full text-sm">
-                <thead class="text-left">
-                    <tr>
-                        <th class="p-4">N° retour</th>
-                        <th class="p-4">Facture</th>
-                        <th class="p-4">Client</th>
-                        <th class="p-4">Date</th>
-                        <th class="p-4">Statut</th>
-                        <th class="p-4 text-right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @forelse ($returns as $r)
-                    <tr>
-                        <td class="p-4 font-medium text-gray-900">{{ $r->displayNumber() }}</td>
-                        <td class="p-4">{{ $r->invoice?->displayNumber() }}</td>
-                        <td class="p-4">{{ $r->client?->name }}</td>
-                        <td class="p-4">{{ optional($r->return_date)->format('d/m/Y') ?? '—' }}</td>
-                        <td class="p-4"><x-status-badge :status="$r->status" /></td>
-                        <td class="p-4">
-                            <div class="flex justify-end gap-2">
-                                <a href="{{ route('returns.show', $r) }}" class="act">Voir</a>
-                            </div>
-                        </td>
-                    </tr>
-                @empty
-                    <tr><td colspan="6" class="p-10 text-center text-gray-500">Aucun retour client.</td></tr>
-                @endforelse
-                </tbody>
-            </table>
+            {{-- UNE seule section de filtres : 4 filtres utiles --}}
+            <div class="panel p-3">
+                <div class="flex flex-wrap items-center gap-2">
+                    <input type="search" x-model="f.q" @input="queue()" aria-label="Recherche"
+                           placeholder="🔎 N° retour, facture, client…" class="min-w-[14rem] flex-1 py-1.5 text-xs">
+
+                    <select x-model="f.status" @change="load(1)" aria-label="Statut" class="py-1.5 text-xs">
+                        <option value="">Statut : tous</option>
+                        <option value="brouillon">Brouillon</option>
+                        <option value="valide">Validé</option>
+                    </select>
+
+                    <label class="flex items-center gap-1 text-[11px] text-gray-500">Du
+                        <input type="date" x-model="f.from" @change="load(1)" class="py-1 text-xs"></label>
+                    <label class="flex items-center gap-1 text-[11px] text-gray-500">Au
+                        <input type="date" x-model="f.to" @change="load(1)" class="py-1 text-xs"></label>
+
+                    <button type="button" x-show="active" x-cloak @click="reset()"
+                            class="text-xs font-semibold text-gray-900 underline decoration-gold-500 decoration-2 underline-offset-4">Réinitialiser</button>
+                </div>
+            </div>
+
+            <div class="panel overflow-hidden">
+                <div class="h-0.5 transition-opacity" :class="loading ? 'animate-pulse bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300' : 'bg-transparent'"></div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="text-left">
+                            <tr>
+                                <th class="p-4">N° retour</th>
+                                <th class="p-4">Facture</th>
+                                <th class="p-4">Client</th>
+                                <th class="p-4">Date</th>
+                                <th class="p-4">Avoir</th>
+                                <th class="p-4">Statut</th>
+                                <th class="p-4"></th>
+                            </tr>
+                        </thead>
+                        <tbody x-html="rows" :class="loading ? 'opacity-50' : ''" class="transition-opacity"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div x-html="links" @click="paginate($event)"></div>
         </div>
-        <div class="mt-5">{{ $returns->links() }}</div>
     </div>
+
+    @include('partials._list-table-script')
 </x-app-layout>

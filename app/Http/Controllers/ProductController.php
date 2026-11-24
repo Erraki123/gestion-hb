@@ -17,7 +17,17 @@ class ProductController extends Controller
 {
     public function index(Request $request)
     {
-        $products = Product::with('category')
+        $isAdmin = auth()->user()->isAdmin();
+
+        $products = Product::query()
+            ->select($isAdmin ? ['products.*'] : [
+                'products.id', 'products.category_id', 'products.name',
+                'products.sku', 'products.description', 'products.unit',
+                'products.tax_rate', 'products.sale_price', 'products.stock_quantity',
+                'products.min_stock', 'products.image_path', 'products.is_active',
+                'products.created_at', 'products.updated_at',
+            ])
+            ->with('category')
             ->when(auth()->user()->isCommercial(), fn ($q) => $q->where('is_active', true))
             ->when($request->q, fn ($q, $s) => $q->where(function ($w) use ($s) {
                 $w->where('name', 'like', "%{$s}%")->orWhere('sku', 'like', "%{$s}%");
@@ -35,11 +45,13 @@ class ProductController extends Controller
 
     public function create()
     {
+        abort_unless(auth()->user()->isAdmin(), 403);
         return view('products.create', ['categories' => Category::orderBy('name')->get()]);
     }
 
     public function store(Request $request, StockService $stock)
     {
+        abort_unless(auth()->user()->isAdmin(), 403);
         $data = $this->validated($request);
         $initial = (float) ($request->validate(['initial_stock' => ['nullable', 'numeric', 'min:0']])['initial_stock'] ?? 0);
 
@@ -65,13 +77,22 @@ class ProductController extends Controller
 
     public function show(Product $product)
     {
-        $product->load(['category', 'movements.user', 'priceHistories.user']);
+        if (auth()->user()->isAdmin()) {
+            $product->load(['category', 'movements.user', 'priceHistories.user']);
+        } else {
+            // Le modele injecte par route contient toutes ses colonnes : retirer
+            // explicitement les prix sensibles avant de transmettre la vue.
+            $product->setRawAttributes(collect($product->getAttributes())
+                ->except(['purchase_price'])->all(), true);
+            $product->load(['category', 'movements.user']);
+        }
 
         return view('products.show', compact('product'));
     }
 
     public function edit(Product $product)
     {
+        abort_unless(auth()->user()->isAdmin(), 403);
         return view('products.edit', [
             'product'    => $product,
             'categories' => Category::orderBy('name')->get(),
@@ -80,6 +101,7 @@ class ProductController extends Controller
 
     public function update(Request $request, Product $product)
     {
+        abort_unless(auth()->user()->isAdmin(), 403);
         $data = $this->validated($request, $product);
         $data['is_active'] = $request->boolean('is_active');
 
@@ -114,6 +136,7 @@ class ProductController extends Controller
 
     public function destroy(Product $product)
     {
+        abort_unless(auth()->user()->isAdmin(), 403);
         $product->delete(); // Soft delete
 
         return redirect()->route('products.index')->with('success', 'Produit supprimé (restaurable).');

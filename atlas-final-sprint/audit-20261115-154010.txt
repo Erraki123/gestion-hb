@@ -1,0 +1,89 @@
+﻿ATLAS FINAL SPRINT - LOCAL SOURCE PREP
+Timestamp: 20261115-154010
+Root: C:\Users\hp\Desktop\hblom\gestion-commerciale
+=== PHP version ===
+PHP 8.3.11 (cli) (built: Aug 27 2024 21:28:59) (ZTS Visual C++ 2019 x64)
+Copyright (c) The PHP Group
+Zend Engine v4.3.11, Copyright (c) Zend Technologies
+    with Zend OPcache v8.3.11, Copyright (c), by Zend Technologies
+
+=== Laravel version ===
+Laravel Framework 13.39.0
+
+=== Routes ===
+
+                                          
+  The "--compact" option does not exist.  
+                                          
+
+
+=== Migrations status ===
+
+  Migration name ................................................................................ Batch / Status  
+  0001_01_01_000000_create_users_table ................................................................. [1] Ran  
+  0001_01_01_000001_create_cache_table ................................................................. [1] Ran  
+  0001_01_01_000002_create_jobs_table .................................................................. [1] Ran  
+  2026_10_30_150402_add_role_and_status_to_users_table ................................................. [1] Ran  
+  2026_10_30_154010_create_clients_table ............................................................... [1] Ran  
+  2026_10_30_154011_create_client_notes_table .......................................................... [1] Ran  
+  2026_10_30_154012_create_client_activities_table ..................................................... [1] Ran  
+  2026_10_30_154015_create_client_attachments_table .................................................... [1] Ran  
+  2026_10_30_162217_create_categories_table ............................................................ [1] Ran  
+  2026_10_30_162219_create_products_table .............................................................. [1] Ran  
+  2026_10_30_162221_create_stock_movements_table ....................................................... [1] Ran  
+  2026_10_30_162224_create_price_histories_table ....................................................... [1] Ran  
+  2026_10_31_115433_create_quotes_table ................................................................ [1] Ran  
+  2026_10_31_115437_create_quote_items_table ........................................................... [1] Ran  
+  2026_10_31_115440_create_orders_table ................................................................ [1] Ran  
+  2026_10_31_115442_create_order_items_table ........................................................... [1] Ran  
+  2026_10_31_115510_create_document_sequences_table .................................................... [1] Ran  
+  2026_10_31_131009_create_invoices_table .............................................................. [1] Ran  
+  2026_10_31_131111_create_invoice_items_table ......................................................... [1] Ran  
+  2026_10_31_134946_create_payments_table .............................................................. [1] Ran  
+  2026_10_31_142237_create_commission_rules_table ...................................................... [1] Ran  
+  2026_10_31_142241_create_commission_payouts_table .................................................... [1] Ran  
+  2026_10_31_142305_create_commissions_table ........................................................... [1] Ran  
+  2026_10_31_174150_create_activity_logs_table ......................................................... [1] Ran  
+  2026_11_01_000001_create_settings_table .............................................................. [1] Ran  
+  2026_11_01_000002_add_vat_to_products_and_document_lines ............................................. [1] Ran  
+  2026_11_01_000003_create_deliveries_tables ........................................................... [1] Ran  
+  2026_11_01_000004_create_supplier_purchase_tables .................................................... [1] Ran  
+  2026_11_01_000005_create_customer_returns_tables ..................................................... [1] Ran  
+  2026_11_05_161824_add_stock_moved_to_invoices_table .................................................. [2] Ran  
+  2026_11_08_000001_add_cheque_tracking_to_invoices .................................................... [4] Ran  
+  2026_11_08_000001_add_product_percent_commission ..................................................... [3] Ran  
+  2026_11_08_100000_create_message_logs_table .......................................................... [5] Ran  
+  2026_11_09_000001_make_product_id_nullable_on_document_items ......................................... [6] Ran  
+  2026_11_10_000001_add_transport_installation_to_invoices ............................................. [7] Ran  
+  2026_11_10_000002_create_payment_documents_table ..................................................... [7] Ran  
+  2026_11_10_000003_add_transport_alarm_to_invoices .................................................... [8] Ran  
+  2026_11_14_000001_add_order_approval_request ......................................................... [9] Ran  
+  2026_11_14_000002_add_quote_price_approval .......................................................... [10] Ran  
+  2026_11_14_200000_create_prospect_details_table ..................................................... [11] Ran  
+  2026_11_14_220000_create_whatsapp_inbound_messages_table ............................................ [12] Ran  
+  2026_11_14_230000_create_discovered_prospects_table ................................................. [13] Ran  
+  2026_11_14_233000_add_qualification_to_discovered_prospects ......................................... [14] Ran  
+  2026_11_15_140000_create_atlas_contact_decisions_table .............................................. [15] Ran  
+
+
+=== Scheduled commands ===
+
+  30 1 * * *  php artisan backup:clean ................................................ Next Due: dans 10 heures
+  0  2 * * *  php artisan backup:run .................................................. Next Due: dans 11 heures
+  0  3 * * *  php artisan backup:monitor .............................................. Next Due: dans 12 heures
+  30 3 1 * *  php artisan activity:archive ........................................... Next Due: dans 2 semaines
+  0  8 * * *  php artisan cheques:digest .............................................. Next Due: dans 17 heures
+  *  * * * *  php artisan queue:work --stop-when-empty --tries=3 --max-time=50  Has Mutex ΓÇ║ Next Due: dans 47 secondes
+  30 8 * * *  php artisan direction:alerts ............................................ Next Due: dans 17 heures
+  15 9 * * *  php artisan prospects:discover .......................................... Next Due: dans 18 heures
+  35 9 * * *  php artisan prospects:qualify ........................................... Next Due: dans 18 heures
+
+
+=== Composer validation ===
+./composer.json is valid, but with a few warnings
+See https://getcomposer.org/doc/04-schema.md for details on the schema
+# General warnings
+- require.barryvdh/laravel-dompdf : unbound version constraints (*) should be avoided
+- require.phpoffice/phpspreadsheet : unbound version constraints (*) should be avoided
+- require.spatie/laravel-backup : unbound version constraints (*) should be avoided
+

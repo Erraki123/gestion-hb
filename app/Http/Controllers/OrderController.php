@@ -42,7 +42,7 @@ class OrderController extends Controller
     {
         $to = $request->validate(['status' => ['required', 'in:confirmee,terminee,annulee']])['status'];
 
-        DB::transaction(function () use ($order, $to, $stock) {
+        DB::transaction(function () use ($order, $to, $stock, $request) {
             $o = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
 
             if (! in_array($to, self::TRANSITIONS[$o->status] ?? [], true)) {
@@ -51,9 +51,17 @@ class OrderController extends Controller
 
             $o->load('items');
 
+            if ($to === 'confirmee' && ! $request->user()->isAdmin()) {
+                throw ValidationException::withMessages(['status' => 'Validation de la direction requise avant confirmation.']);
+            }
+
             if ($to === 'confirmee') {
                 if (! $o->stock_deducted && Setting::get('stock_deduction', 'order') === 'order') {
                     foreach ($o->items as $item) {
+                        if (! $item->product_id) {
+                            continue; // ligne libre : pas de stock
+                        }
+
                         $stock->move($item->product()->firstOrFail(), 'sortie', (float) $item->quantity,
                             auth()->id(), 'Commande confirmée', $o->number);
                     }
@@ -68,6 +76,10 @@ class OrderController extends Controller
 
                 if ($o->stock_deducted) {
                     foreach ($o->items as $item) {
+                        if (! $item->product_id) {
+                            continue; // ligne libre : pas de stock
+                        }
+
                         $stock->move($item->product()->firstOrFail(), 'entree', (float) $item->quantity,
                             auth()->id(), 'Commande annulée', $o->number);
                     }
@@ -78,6 +90,15 @@ class OrderController extends Controller
             $o->status = $to;
             $o->save();
         });
+
+        if ($to === 'confirmee') {
+            try {
+                app(DeliveryController::class)->autoDeliver($order->fresh());
+            } catch (ValidationException $e) {
+                return back()->withErrors($e->errors())
+                    ->with('success', 'Commande confirmée, mais le bon de livraison automatique a échoué.');
+            }
+        }
 
         return back()->with('success', 'Statut de la commande mis à jour.');
     }

@@ -6,16 +6,19 @@
                 <p class="mt-1 text-sm text-gray-500">Commande · {{ $order->client->name }}</p>
             </div>
             <div class="flex flex-wrap gap-2">
+                <a href="{{ route('orders.pdf', $order) }}" class="px-3 py-2 rounded bg-gold-500 text-gray-950 font-semibold">Télécharger Bon de commande PDF</a>
                 @foreach ([
                     'nouvelle'  => [['confirmee', 'Confirmer', 'bg-indigo-600'], ['annulee', 'Annuler', 'bg-red-600']],
                     'confirmee' => [['terminee', 'Marquer terminée', 'bg-green-600'], ['annulee', 'Annuler', 'bg-red-600']],
                 ][$order->status] ?? [] as [$to, $label, $color])
+                    @if ($to !== 'confirmee' || (auth()->user()->isAdmin()))
                     <form method="POST" action="{{ route('orders.status', $order) }}"
                           onsubmit="return confirm('{{ $label }} cette commande ?')">
                         @csrf @method('PATCH')
                         <input type="hidden" name="status" value="{{ $to }}">
                         <button class="px-3 py-2 {{ $color }} text-white rounded">{{ $label }}</button>
                     </form>
+                    @endif
                 @endforeach
 
                 @if (in_array($order->status, ['confirmee', 'terminee']))
@@ -40,6 +43,31 @@
         @endif
         @if ($errors->any())
             <div class="rounded-xl border border-red-200 bg-red-100 p-3 text-sm text-red-800">@foreach ($errors->all() as $e)<div>{{ $e }}</div>@endforeach</div>
+        @endif
+
+        @if ($order->status === 'nouvelle' && ! auth()->user()->isAdmin())
+            <div class="panel p-5 space-y-3">
+                <h3 class="font-semibold">Validation administrative de commande</h3>
+                <p class="text-sm text-gray-600">État : <strong>{{ $order->approval_status }}</strong></p>
+                @if ($order->approval_comment)
+                    <p class="text-sm">Motif : {{ $order->approval_comment }}</p>
+                @endif
+                @if ($order->approval_status !== 'pending' && $order->approval_status !== 'approved')
+                    <form method="POST" action="{{ route('orders.approval.request', $order) }}">
+                        @csrf
+                        <button class="px-4 py-2 bg-amber-600 text-white rounded">Demander la validation</button>
+                    </form>
+                @endif
+                @if (auth()->user()->isAdmin() && $order->approval_status === 'pending')
+                    <form method="POST" action="{{ route('orders.approval.decide', $order) }}" class="space-y-2">
+                        @csrf
+                        <label class="block text-sm">Commentaire (optionnel)</label>
+                        <textarea name="comment" maxlength="2000" class="w-full border rounded"></textarea>
+                        <button name="decision" value="approved" class="px-4 py-2 bg-green-700 text-white rounded">Approuver</button>
+                        <button name="decision" value="rejected" class="px-4 py-2 bg-red-700 text-white rounded">Refuser</button>
+                    </form>
+                @endif
+            </div>
         @endif
 
         <x-workflow-steps :current="2" />

@@ -1,0 +1,1 @@
+HN BLOOM Chromium CDP Base64 renderer fix. Fixes Puppeteer ProtocolError (IO.read): Read failed. Extract ZIP into Laravel root; run powershell -ExecutionPolicy Bypass -File .\HNB_CHROMIUM_IOREAD_FIX_V26\INSTALL_HNB_IOREAD_FIX.ps1. No workflow or template changes.

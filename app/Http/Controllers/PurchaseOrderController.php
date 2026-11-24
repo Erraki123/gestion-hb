@@ -4,11 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Product;
 use App\Models\PurchaseOrder;
-use App\Models\PurchaseOrderItem;
-use App\Models\Setting;
 use App\Models\Supplier;
+use App\Models\SupplierInvoice;
 use App\Services\DocumentNumberService;
-use App\Services\DocumentTotals;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -17,38 +15,50 @@ class PurchaseOrderController extends Controller
 {
     public function index()
     {
-        $purchaseOrders = PurchaseOrder::with('supplier')->latest('id')->paginate(15);
-
-        return view('purchase-orders.index', compact('purchaseOrders'));
+        return redirect()->route('purchases.index', ['tab' => 'commandes']);
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        return view('purchase-orders.create', ['suppliers' => Supplier::where('is_active', true)->orderBy('name')->get()]);
+        return view('purchase-orders.create', [
+            'suppliers' => Supplier::where('is_active', true)->orderBy('name')->get(),
+            'selectedSupplier' => $request->query('supplier_id'),
+            'products' => Product::where('is_active', true)->orderBy('name')->get()->map(fn ($p) => [
+                'id' => $p->id,
+                'name' => $p->name,
+                'sku' => $p->sku,
+                'purchase_price' => (float) $p->purchase_price,
+                'tax_rate' => (float) $p->tax_rate,
+            ])->values(),
+        ]);
     }
 
     public function store(Request $request)
     {
         $data = $request->validate([
-            'supplier_id' => ['required', 'exists:suppliers,id'],
-            'order_date' => ['nullable', 'date'],
+            'supplier_id'   => ['required', 'exists:suppliers,id'],
+            'order_date'    => ['nullable', 'date'],
             'expected_date' => ['nullable', 'date'],
-            'notes' => ['nullable', 'string'],
-            'items' => ['required', 'array'],
+            'notes'         => ['nullable', 'string'],
+            'items'         => ['required', 'array'],
         ]);
 
-        $purchaseOrder = DB::transaction(function () use ($data, $request) {
+        $order = DB::transaction(function () use ($data, $request) {
             $order = PurchaseOrder::create([
-                'supplier_id' => $data['supplier_id'],
-                'status' => 'brouillon',
-                'order_date' => $data['order_date'] ?? now()->toDateString(),
+                'supplier_id'   => $data['supplier_id'],
+                'status'        => 'brouillon',
+                'order_date'    => $data['order_date'] ?? now()->toDateString(),
                 'expected_date' => $data['expected_date'] ?? null,
-                'notes' => $data['notes'] ?? null,
-                'created_by' => auth()->id(),
-                'subtotal_ht' => 0,
-                'tax_amount' => 0,
-                'total_ttc' => 0,
+                'notes'         => $data['notes'] ?? null,
+                'created_by'    => auth()->id(),
+                'subtotal_ht'   => 0,
+                'tax_amount'    => 0,
+                'total_ttc'     => 0,
             ]);
+
+            $groups = [];
+            $subtotal = 0.0;
+            $count = 0;
 
             foreach ($request->input('items', []) as $raw) {
                 $product = Product::find($raw['product_id'] ?? null);
@@ -59,45 +69,56 @@ class PurchaseOrderController extends Controller
 
                 $unitCost = (float) ($raw['unit_cost'] ?? $product->purchase_price ?? 0);
                 $discount = (float) ($raw['discount_percent'] ?? 0);
-                $taxRate = (float) ($raw['tax_rate'] ?? $product->tax_rate ?? 0);
-                $lineTotal = round($qty * $unitCost * (1 - $discount / 100), 2);
+                $taxRate  = (float) ($raw['tax_rate'] ?? $product->tax_rate ?? 0);
+                $lineHt   = round($qty * $unitCost * (1 - $discount / 100), 2);
 
                 $order->items()->create([
-                    'product_id' => $product->id,
-                    'name' => $product->name,
-                    'sku' => $product->sku,
-                    'unit' => $product->unit,
-                    'quantity' => $qty,
-                    'unit_cost' => round($unitCost, 4),
-                    'discount_percent' => $discount,
-                    'tax_rate' => $taxRate,
-                    'line_total_ht' => $lineTotal,
+                    'product_id'        => $product->id,
+                    'name'              => $product->name,
+                    'sku'               => $product->sku,
+                    'unit'              => $product->unit,
+                    'quantity'          => $qty,
+                    'unit_cost'         => round($unitCost, 4),
+                    'discount_percent'  => $discount,
+                    'tax_rate'          => $taxRate,
+                    'line_total_ht'     => $lineHt,
                     'received_quantity' => 0,
                 ]);
+
+                $key = number_format($taxRate, 2, '.', '');
+                $groups[$key] = ($groups[$key] ?? 0) + $lineHt;
+                $subtotal += $lineHt;
+                $count++;
             }
 
-            $totals = app(DocumentTotals::class)->compute($order->items()->get()->map(fn ($item) => [
-                'quantity' => (float) $item->quantity,
-                'unit_price' => (float) $item->unit_cost,
-                'discount_percent' => (float) $item->discount_percent,
-                'tax_rate' => (float) $item->tax_rate,
-            ])->all());
-            $order->subtotal_ht = $totals['subtotal_ht'];
-            $order->tax_amount = $totals['tax_amount'];
-            $order->total_ttc = $totals['total_ttc'];
-            $order->save();
+            if ($count === 0) {
+                throw ValidationException::withMessages(['items' => 'Ajoutez au moins un produit avec une quantité.']);
+            }
+
+            $tax = 0.0;
+            foreach ($groups as $rate => $base) {
+                $tax += round($base * (float) $rate / 100, 2);
+            }
+
+            $order->update([
+                'subtotal_ht' => round($subtotal, 2),
+                'tax_amount'  => round($tax, 2),
+                'total_ttc'   => round($subtotal + $tax, 2),
+            ]);
 
             return $order;
         });
 
-        return redirect()->route('purchase-orders.show', $purchaseOrder)->with('success', 'Commande fournisseur créée.');
+        return redirect()->route('purchase-orders.show', $order)->with('success', 'Commande fournisseur créée.');
     }
 
     public function show(PurchaseOrder $purchaseOrder)
     {
-        $purchaseOrder->load(['supplier', 'items.product', 'receipts.items']);
+        $purchaseOrder->load(['supplier', 'items.product', 'receipts']);
 
-        return view('purchase-orders.show', compact('purchaseOrder'));
+        $invoices = SupplierInvoice::where('purchase_order_id', $purchaseOrder->id)->latest('id')->get();
+
+        return view('purchase-orders.show', compact('purchaseOrder', 'invoices'));
     }
 
     public function edit(PurchaseOrder $purchaseOrder)
@@ -111,12 +132,12 @@ class PurchaseOrderController extends Controller
     {
         $request->validate([
             'expected_date' => ['nullable', 'date'],
-            'notes' => ['nullable', 'string'],
+            'notes'         => ['nullable', 'string'],
         ]);
 
         $purchaseOrder->update([
             'expected_date' => $request->input('expected_date'),
-            'notes' => $request->input('notes'),
+            'notes'         => $request->input('notes'),
         ]);
 
         return redirect()->route('purchase-orders.show', $purchaseOrder)->with('success', 'Commande fournisseur mise à jour.');
@@ -130,7 +151,7 @@ class PurchaseOrderController extends Controller
 
         $purchaseOrder->delete();
 
-        return redirect()->route('purchase-orders.index')->with('success', 'Commande fournisseur supprimée.');
+        return redirect()->route('purchases.index', ['tab' => 'commandes'])->with('success', 'Commande fournisseur supprimée.');
     }
 
     public function confirm(PurchaseOrder $purchaseOrder)
@@ -143,7 +164,7 @@ class PurchaseOrderController extends Controller
         $purchaseOrder->status = 'commande';
         $purchaseOrder->save();
 
-        return redirect()->route('purchase-orders.show', $purchaseOrder)->with('success', 'Commande fournisseur confirmée.');
+        return back()->with('success', 'Commande fournisseur confirmée.');
     }
 
     public function cancel(PurchaseOrder $purchaseOrder)
@@ -155,11 +176,11 @@ class PurchaseOrderController extends Controller
         $purchaseOrder->status = 'annulee';
         $purchaseOrder->save();
 
-        return redirect()->route('purchase-orders.show', $purchaseOrder)->with('success', 'Commande fournisseur annulée.');
+        return back()->with('success', 'Commande fournisseur annulée.');
     }
 
     public function pdf(PurchaseOrder $purchaseOrder)
     {
-        return view('purchase-orders.pdf', compact('purchaseOrder'));
+        return redirect()->route('admin.pdf-studio.show', ['type' => 'purchase_order', 'id' => $purchaseOrder->id, 'download' => 1]);
     }
 }

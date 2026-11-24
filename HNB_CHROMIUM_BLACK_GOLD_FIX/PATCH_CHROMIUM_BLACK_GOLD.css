@@ -1,0 +1,42 @@
+/* HNB_CHROMIUM_BLACK_GOLD_PATCH_START */
+:root {
+  --ink: #1b1a18;
+  --blue: #23211e;
+  --gold: #b48a45;
+  --gold2: #d6b777;
+  --cream: #faf7f0;
+  --line: #d9cbb4;
+  --soft: #f5f1e8;
+}
+html,body { color:#201e1b; }
+.masthead { border-bottom:2px solid #b48a45; padding-bottom:11px; margin-bottom:16px; }
+.brand-row { display:flex; align-items:center; justify-content:space-between; gap:11px; min-height:29mm; }
+.brand-col { width:42%; flex:0 0 42%; min-width:0; }
+.brand-logo { display:block; max-width:100%; width:auto; max-height:28mm; object-fit:contain; object-position:left center; }
+.brand-tag { white-space:normal; line-height:1.5; font-size:7.3pt; letter-spacing:.45px; margin-top:5px; }
+.service-band { flex:1 1 auto; width:auto; min-width:0; min-height:24mm; border:1px solid #c6a46e; border-right:2px solid #b48a45; background:linear-gradient(120deg,#fffaf3,#f4e9d6 58%,#fdf8ed); }
+.service-icon { padding:5px 2px; }
+.service-icon svg { width:29px; height:29px; stroke:#8e6a34; }
+.service-icon span { font-size:6.9pt; letter-spacing:0; color:#5e4629; }
+.services-description { color:#36312b; font-size:9pt; line-height:1.5; margin-top:8px; }
+.document-ribbon { background:linear-gradient(105deg,#171614,#35302a); color:#fff; border-left:4px solid #bc934b; }
+.document-metadata { border-color:#cbb994; box-shadow:none; background:#fff; }
+.party-card { border-color:#cfc1a9; }
+.party-title { background:#f0e6d3; color:#302820; border-bottom:1px solid #c7aa78; }
+.party-body { background:#fff; color:#24211d; }
+.line-table th,.payment-table th { background:#24211e; color:#f7eddc; border-right:1px solid #6a5844; }
+.line-table td,.payment-table td { border-color:#d8cec0; }
+.line-table tbody tr:nth-child(even) td,.payment-table tbody tr:nth-child(even) td { background:#faf7f2; }
+.summary-box { border-color:#bea57a; }
+.summary-grand { background:#24211e; color:#f5d99e; }
+.note-card { background:#faf8f3; border-color:#d6c6aa; }
+.note-title { color:#332a20; background:#f0e6d3; border-bottom:1px solid #d9c6a0; }
+.section-heading { color:#33291c; }
+.footer-top { background:#b48a45; }
+.page-footer { color:#2e2a24; }
+.footer-block strong { color:#8c662c; }
+.footer-ico { color:#ad8444; }
+@media screen {
+  .sheet { padding:14mm; }
+}
+/* HNB_CHROMIUM_BLACK_GOLD_PATCH_END */

@@ -20,22 +20,52 @@ class ReturnController extends Controller
 {
     public function index(Request $request)
     {
-        $returns = CustomerReturn::with(['invoice', 'client', 'commercial'])
-            ->when($request->q, fn ($q, $s) => $q->where(function ($w) use ($s) {
-                $w->where('number', 'like', "%{$s}%")
-                  ->orWhereHas('client', fn ($c) => $c->where('name', 'like', "%{$s}%"));
-            }))
-            ->when($request->status, fn ($q, $s) => $q->where('status', $s))
-            ->latest('id')
-            ->paginate(15)
-            ->withQueryString();
+        $returns = $this->filtered($request)->paginate(15)->withQueryString();
+
+        // Appel AJAX du filtre : on renvoie seulement les lignes et la pagination
+        if ($request->expectsJson()) {
+            return response()->json([
+                'rows'  => view('returns._rows', ['returns' => $returns])->render(),
+                'links' => (string) $returns->links(),
+                'total' => $returns->total(),
+            ]);
+        }
 
         return view('returns.index', compact('returns'));
     }
 
+    /** Filtres : recherche (n° retour, facture, client), statut, période */
+    private function filtered(Request $request)
+    {
+        $like = fn (string $v) => '%' . addcslashes($v, '\\%_') . '%';
+        $str  = fn (string $key) => trim((string) $request->input($key, ''));
+
+        $q      = $str('q');
+        $status = $str('status');
+        $from   = $str('from');
+        $to     = $str('to');
+
+        $isDate = fn (string $d) => (bool) preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) && strtotime($d) !== false;
+
+        return CustomerReturn::with(['invoice', 'client', 'commercial', 'creditNote'])
+            ->when($q !== '', function ($query) use ($q, $like) {
+                $pattern = $like($q);
+
+                $query->where(function ($w) use ($pattern) {
+                    $w->where('number', 'like', $pattern)
+                        ->orWhereHas('client', fn ($c) => $c->where('name', 'like', $pattern)->orWhere('company', 'like', $pattern))
+                        ->orWhereHas('invoice', fn ($i) => $i->where('number', 'like', $pattern));
+                });
+            })
+            ->when(in_array($status, ['brouillon', 'valide'], true), fn ($query) => $query->where('status', $status))
+            ->when($isDate($from), fn ($query) => $query->whereDate('return_date', '>=', $from))
+            ->when($isDate($to), fn ($query) => $query->whereDate('return_date', '<=', $to))
+            ->latest('id');
+    }
+
     public function store(Request $request, Invoice $invoice)
     {
-        abort_unless(in_array($invoice->type, ['facture'], true) && in_array($invoice->status, ['emise', 'partiellement_payee', 'payee'], true), 403, 'Retour impossible pour ce document.');
+        abort_unless(in_array($invoice->type, ['facture'], true) && in_array($invoice->status, Invoice::COUNTED, true), 403, 'Retour impossible pour ce document.');
 
         $invoice->load('items');
 
@@ -242,6 +272,6 @@ class ReturnController extends Controller
 
         event(new CreditNoteIssued($data['credit']));
 
-        return redirect()->route('returns.show', $data['return'])->with('success', 'Retour validé et avoir créé.');
+        return redirect()->route('returns.index')->with('success', 'Retour validé et avoir créé.');
     }
 }

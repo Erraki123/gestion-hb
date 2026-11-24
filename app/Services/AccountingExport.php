@@ -118,7 +118,7 @@ class AccountingExport
             ->where(function ($query) {
                 $query->where(function ($q) {
                     $q->where('type', 'facture')
-                        ->whereIn('status', ['emise', 'partiellement_payee', 'payee', 'annulee']);
+                        ->whereIn('status', [...Invoice::COUNTED, 'annulee']);
                 })->orWhere('type', 'avoir');
             })
             ->orderBy('issue_date')

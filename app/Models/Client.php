@@ -29,6 +29,11 @@ class Client extends Model
         });
     }
 
+    public function prospectDetail(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(ProspectDetail::class);
+    }
+
     public function commercial(): BelongsTo
     {
         return $this->belongsTo(User::class, 'commercial_id')->withTrashed();

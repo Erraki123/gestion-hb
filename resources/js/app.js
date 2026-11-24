@@ -1,4 +1,3 @@
-import '@fontsource-variable/inter';
 import Alpine from 'alpinejs';
 import Chart from 'chart.js/auto';
 
@@ -8,7 +7,7 @@ Chart.defaults.color = '#6B7280';
 Chart.defaults.borderColor = 'rgba(17,24,39,.06)';
 /* ---------- تأكيدات أنيقة ----------
    تحوّل تلقائياً onsubmit/onclick="return confirm('...')" إلى نافذة تأكيد */
-const CONFIRM_RE = /confirm\(\s*(['"])([\s\S]*?)\1\s*\)/;
+const CONFIRM_RE = /^\s*return\s+confirm\(\s*(['"])([\s\S]*?)\1\s*\)\s*;?\s*$/;
 
 function askConfirm(message, onConfirm) {
     window.dispatchEvent(new CustomEvent('confirm-request', { detail: { message, onConfirm } }));
@@ -21,6 +20,8 @@ function convertInlineConfirms() {
             const attr = el.hasAttribute('onsubmit') ? 'onsubmit' : 'onclick';
             const m = el.getAttribute(attr).match(CONFIRM_RE);
 
+            // Ne retirer que les attributs qui sont exactement `return confirm(...)`.
+            // Conserver tout autre onclick/onsubmit : il peut contenir des règles métier.
             if (m) {
                 el.dataset.confirm = m[2];
                 el.removeAttribute(attr);

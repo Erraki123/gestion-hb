@@ -83,13 +83,13 @@ class DashboardService
     private function sales()
     {
         return $this->invoices()->where('type', 'facture')
-            ->whereIn('status', ['emise', 'partiellement_payee', 'payee']);
+            ->whereIn('status', Invoice::COUNTED);
     }
 
     private function open()
     {
         return $this->invoices()->where('type', 'facture')
-            ->whereIn('status', ['emise', 'partiellement_payee']);
+            ->whereIn('status', Invoice::OPEN);
     }
 
     private function payments()
@@ -97,6 +97,14 @@ class DashboardService
         return Payment::withoutGlobalScope('owner')
             ->when($this->userId, fn ($q, $id) => $q->where('commercial_id', $id))
             ->where('status', 'valide');
+    }
+
+    /** Argent réellement entré : espèces, virements et chèques encaissés (hors chèques en attente) */
+    private function cashedPayments()
+    {
+        return $this->payments()->where(function ($q) {
+            $q->where('method', '!=', 'cheque')->orWhere('cheque_status', 'encaisse');
+        });
     }
 
     private function quotes()
@@ -148,7 +156,7 @@ class DashboardService
             'revenue_ttc'   => (float) $sales()->sum('total_ttc') - (float) $credits()->sum('total_ttc'),
             'invoice_count' => $sales()->count(),
 
-            'collected'     => (float) $this->payments()->whereBetween('paid_at', $d)->sum('amount'),
+            'collected'     => (float) $this->cashedPayments()->whereBetween('paid_at', $d)->sum('amount'),
             'remaining'     => (float) $this->open()->sum($bal),
             'overdue'       => (float) $this->open()->overdue()->sum($bal),
             'overdue_count' => $this->open()->overdue()->count(),
@@ -198,7 +206,7 @@ class DashboardService
             ->selectRaw('commercial_id, SUM(total_ttc) as t, COUNT(*) as n')
             ->groupBy('commercial_id')->get()->keyBy('commercial_id');
 
-        $col = $this->payments()->whereBetween('paid_at', $d)
+        $col = $this->cashedPayments()->whereBetween('paid_at', $d)
             ->selectRaw('commercial_id, SUM(amount) as t')
             ->groupBy('commercial_id')->get()->keyBy('commercial_id');
 
@@ -245,7 +253,7 @@ class DashboardService
         return DB::table('invoice_items as ii')
             ->join('invoices as i', 'i.id', '=', 'ii.invoice_id')
             ->where('i.type', 'facture')
-            ->whereIn('i.status', ['emise', 'partiellement_payee', 'payee'])
+            ->whereIn('i.status', Invoice::COUNTED)
             ->whereNull('i.deleted_at')
             ->whereBetween('i.issue_date', $d)
             ->when($this->userId, fn ($q, $id) => $q->where('i.commercial_id', $id))
@@ -271,7 +279,7 @@ class DashboardService
             ->selectRaw("DATE_FORMAT(issue_date, '%Y-%m') as m, SUM(total_ttc) as t")
             ->groupBy('m')->pluck('t', 'm');
 
-        $collected = $this->payments()->where('paid_at', '>=', $start->toDateString())
+        $collected = $this->cashedPayments()->where('paid_at', '>=', $start->toDateString())
             ->selectRaw("DATE_FORMAT(paid_at, '%Y-%m') as m, SUM(amount) as t")
             ->groupBy('m')->pluck('t', 'm');
 
@@ -279,7 +287,7 @@ class DashboardService
             ->selectRaw('status, COUNT(*) as n')->groupBy('status')->pluck('n', 'status');
 
         $labels = [
-            'emise' => 'Émise', 'partiellement_payee' => 'Partiellement payée', 'payee' => 'Payée',
+            'emise' => 'Émise', 'partiellement_payee' => 'Partiellement payée', 'cheque_en_attente' => 'Chèque non encaissé', 'payee' => 'Payée',
         ];
 
         return [

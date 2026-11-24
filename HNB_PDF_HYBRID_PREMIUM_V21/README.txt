@@ -1,0 +1,1 @@
+HN BLOOM V21 - fixed tiny header and unreadable footer. Extract into Laravel root, then run powershell -ExecutionPolicy Bypass -File .\HNB_PDF_HYBRID_PREMIUM_V21\INSTALL_HNB_PDF_V21.ps1. All originals are backed up. No database, route or controller modifications.

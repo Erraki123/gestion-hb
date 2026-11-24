@@ -6,6 +6,12 @@
         'accepte'             => ['Accepté', 'bg-green-100 text-green-800'],
         'refuse'              => ['Refusé', 'bg-red-100 text-red-800'],
         'expire'              => ['Expiré', 'bg-yellow-100 text-yellow-800'],
+        'converti'            => ['Converti', 'bg-indigo-100 text-indigo-800'],
+        'devis'               => ['Devis', 'bg-gray-200 text-gray-700'],
+        'commande'            => ['Commandé', 'bg-indigo-100 text-indigo-800'],
+        'livraison_partielle' => ['Livraison partielle', 'bg-yellow-100 text-yellow-800'],
+        'livre'               => ['Livré', 'bg-green-100 text-green-800'],
+        'facture'             => ['Facturé', 'bg-green-100 text-green-800'],
         'nouvelle'            => ['Nouvelle', 'bg-blue-100 text-blue-800'],
         'confirmee'           => ['Confirmée', 'bg-indigo-100 text-indigo-800'],
         'terminee'            => ['Terminée', 'bg-green-100 text-green-800'],
@@ -26,6 +32,7 @@
         'partiellement_payee' => ['Partiellement payée', 'bg-orange-100 text-orange-800'],
         'non_payee'           => ['Non payée', 'bg-red-100 text-red-800'],
         'payee'               => ['Payée', 'bg-green-100 text-green-800'],
+        'cheque_en_attente'   => ['Chèque non encaissé', 'bg-yellow-100 text-yellow-800 border border-yellow-300'],
         'en_retard'           => ['En retard', 'bg-red-200 text-red-900 font-semibold'],
     ];
     [$label, $classes] = $map[$status] ?? [ucfirst($status), 'bg-gray-100'];

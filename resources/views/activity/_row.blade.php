@@ -15,29 +15,29 @@
     $showIp = $showIp ?? false;
 @endphp
 
-<tbody x-data="{ open: false }" class="border-t">
+<tbody x-data="{ open: false }" class="border-t border-gray-100">
     <tr>
-        <td class="p-4 whitespace-nowrap">{{ $log->created_at->format('d/m/Y H:i:s') }}</td>
-        <td class="p-4">{{ $log->user_name ?? $log->user?->name ?? 'Système' }}</td>
-        <td class="p-4">
-            <span class="px-2 py-1 rounded text-xs {{ $colors[$log->action] ?? 'bg-gray-100' }}">{{ $log->actionLabel() }}</span>
+        <td class="whitespace-nowrap text-gray-600">{{ $log->created_at->format('d/m/Y H:i:s') }}</td>
+        <td class="whitespace-nowrap">{{ $log->user_name ?? $log->user?->name ?? 'Système' }}</td>
+        <td>
+            <span class="whitespace-nowrap rounded px-2 py-0.5 text-xs {{ $colors[$log->action] ?? 'bg-gray-100' }}">{{ $log->actionLabel() }}</span>
         </td>
-        <td class="p-4">
+        <td class="text-gray-900">
             {{ $log->description }}
             @if ($log->subject_id && isset($links[$log->subject_type]) && $log->action !== 'deleted')
-                <a href="{{ route($links[$log->subject_type], $log->subject_id) }}" class="act">↗</a>
+                <a href="{{ route($links[$log->subject_type], $log->subject_id) }}" class="act" title="Ouvrir">↗</a>
             @endif
         </td>
-        @if ($showIp) <td class="p-4 text-xs text-gray-500">{{ $log->ip }}</td> @endif
-        <td class="p-4">
+        @if ($showIp) <td class="whitespace-nowrap text-xs text-gray-500">{{ $log->ip }}</td> @endif
+        <td class="text-right">
             @if ($hasDetails)
                 <button type="button" @click="open = !open" class="act" x-text="open ? 'Masquer' : 'Détails'"></button>
             @endif
         </td>
     </tr>
     @if ($hasDetails)
-        <tr x-show="open" style="display:none">
-            <td colspan="{{ $showIp ? 6 : 5 }}" class="p-4 bg-black/20">@include('activity._props')</td>
+        <tr x-show="open" x-cloak style="display:none">
+            <td colspan="{{ $showIp ? 6 : 5 }}" class="bg-black/5">@include('activity._props')</td>
         </tr>
     @endif
 </tbody>

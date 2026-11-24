@@ -9,14 +9,17 @@ use App\Http\Controllers\ClientAttachmentController;
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\ClientNoteController;
 use App\Http\Controllers\CommissionController;
-use App\Http\Controllers\CommissionRuleController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DeliveryController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PaymentDocumentController;
+use App\Http\Controllers\TransportAlertController;
+use App\Http\Controllers\PaymentExportController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\PurchaseController;
 use App\Http\Controllers\QuoteController;
 use App\Http\Controllers\ReceivableController;
 use App\Http\Controllers\ReportController;
@@ -50,6 +53,17 @@ Route::middleware(['auth', 'active'])->group(function () {
 
     // Clients (accessible aux admins et aux commerciaux)
     Route::middleware('role:admin,commercial')->group(function () {
+        // ⚠️ Doit rester AVANT Route::resource('clients', ...),
+        // sinon "search" serait interprété comme "clients/{client}".
+        // CRM simple : prospects, étapes et relances
+        Route::get('prospects', [\App\Http\Controllers\ProspectController::class, 'index'])->name('prospects.index');
+        Route::post('prospects', [\App\Http\Controllers\ProspectController::class, 'store'])->name('prospects.store')->middleware('throttle:30,1');
+        Route::patch('prospects/{client}', [\App\Http\Controllers\ProspectController::class, 'update'])->name('prospects.update');
+
+        Route::get('clients/search', [ClientController::class, 'search'])
+            ->middleware('throttle:60,1')
+            ->name('clients.search');
+
         Route::get('clients/{client}/statement', [ClientController::class, 'statement'])->name('clients.statement');
         Route::resource('clients', ClientController::class);
 
@@ -89,17 +103,26 @@ Route::middleware(['auth', 'active'])->group(function () {
     // Devis, commandes, factures, paiements : Admin + Commercial
     Route::middleware('role:admin,commercial')->group(function () {
         // Devis
+        // ⚠️ Doit rester AVANT Route::resource('quotes', ...)
+        Route::get('quotes/products/search', [QuoteController::class, 'searchProducts'])
+            ->middleware('throttle:60,1')
+            ->name('quotes.products.search');
+
+        Route::post('quotes/{quote}/approval-request', [\App\Http\Controllers\QuoteApprovalController::class, 'request'])->name('quotes.approval.request');
         Route::resource('quotes', QuoteController::class);
         Route::patch('quotes/{quote}/status', [QuoteController::class, 'status'])->name('quotes.status');
-        Route::post('quotes/{quote}/duplicate', [QuoteController::class, 'duplicate'])->name('quotes.duplicate');
+        Route::post('quotes/{quote}/duplicate', [\App\Http\Controllers\QuoteDuplicateController::class, '__invoke'])->name('quotes.duplicate');
         Route::post('quotes/{quote}/convert', [QuoteController::class, 'convert'])->name('quotes.convert');
         Route::get('quotes/{quote}/pdf', [QuoteController::class, 'pdf'])->name('quotes.pdf');
 
         // Commandes
-        Route::get('orders', [OrderController::class, 'index'])->name('orders.index');
+        // La liste des commandes est dans la page « Commandes » (quotes.index) : l'ancien lien redirige
+        Route::get('orders', fn () => redirect()->route('quotes.index'))->name('orders.index');
         Route::get('orders/{order}', [OrderController::class, 'show'])->name('orders.show');
         Route::patch('orders/{order}/status', [OrderController::class, 'status'])->name('orders.status');
+        Route::post('orders/{order}/approval-request', [\App\Http\Controllers\OrderApprovalController::class, 'request'])->name('orders.approval.request');
         Route::post('orders/{order}/deliveries', [DeliveryController::class, 'storeFromOrder'])->name('orders.deliveries.store');
+        Route::post('orders/{order}/deliver', [DeliveryController::class, 'quick'])->name('orders.deliver');
         Route::post('orders/{order}/invoice', [InvoiceController::class, 'fromOrder'])->name('orders.invoice');
 
         Route::get('deliveries', [DeliveryController::class, 'index'])->name('deliveries.index');
@@ -110,10 +133,19 @@ Route::middleware(['auth', 'active'])->group(function () {
         Route::get('deliveries/{delivery}/pdf', [DeliveryController::class, 'pdf'])->name('deliveries.pdf');
 
         // Factures
-        Route::resource('invoices', InvoiceController::class)->only(['index', 'show', 'update', 'destroy']);
+        Route::post('invoices/{invoice}/approval-request', [\App\Http\Controllers\InvoiceIssueApprovalController::class, 'request'])->name('invoices.approval.request');
+        Route::post('invoices/{invoice}/approval-decision', [\App\Http\Controllers\InvoiceIssueApprovalController::class, 'decide'])->middleware('role:admin')->name('invoices.approval.decide');
+        Route::resource('invoices', InvoiceController::class)->only(['index', 'create', 'store', 'show', 'update', 'destroy']);
         Route::post('invoices/{invoice}/issue', [InvoiceController::class, 'issue'])->name('invoices.issue');
         Route::post('invoices/{invoice}/credit', [InvoiceController::class, 'credit'])->name('invoices.credit');
         Route::get('invoices/{invoice}/pdf', [InvoiceController::class, 'pdf'])->name('invoices.pdf');
+        Route::post('invoices/{invoice}/pay', [InvoiceController::class, 'payStore'])->name('invoices.pay.store');
+        Route::patch('invoices/{invoice}/extras', [InvoiceController::class, 'extras'])->name('invoices.extras');
+        Route::patch('invoices/{invoice}/transport-alarm', [TransportAlertController::class, 'update'])->name('invoices.transport-alarm');
+        Route::get('alerts/transport', [TransportAlertController::class, 'index'])->name('transport.alerts');
+        Route::post('payments/{payment}/documents', [PaymentDocumentController::class, 'store'])->name('payments.documents.store');
+        Route::get('payment-documents/{document}', [PaymentDocumentController::class, 'show'])->name('payment-documents.show');
+        Route::delete('payment-documents/{document}', [PaymentDocumentController::class, 'destroy'])->name('payment-documents.destroy');
 
         Route::get('returns', [ReturnController::class, 'index'])->name('returns.index');
         Route::post('invoices/{invoice}/returns', [ReturnController::class, 'store'])->name('invoices.returns.store');
@@ -124,20 +156,33 @@ Route::middleware(['auth', 'active'])->group(function () {
 
         // Paiements et créances
         Route::get('payments', [PaymentController::class, 'index'])->name('payments.index');
+        // ⚠️ Doit rester AVANT payments/{payment}/pdf, sinon "export" serait pris pour un id de paiement.
+        Route::get('payments/export/pdf', [PaymentExportController::class, 'pdf'])
+            ->middleware('throttle:30,1')
+            ->name('payments.export');
         Route::get('payments/{payment}/pdf', [PaymentController::class, 'pdf'])->name('payments.pdf');
         Route::post('invoices/{invoice}/payments', [PaymentController::class, 'store'])->name('invoices.payments.store');
         Route::get('receivables', [ReceivableController::class, 'index'])->name('receivables.index');
+        Route::get('alerts/cheques', [\App\Http\Controllers\ChequeAlertController::class, 'index'])->name('cheques.alerts');
+        Route::post('documents/{type}/{id}/send', [\App\Http\Controllers\DocumentSendController::class, 'store'])
+            ->where(['type' => 'quote|invoice', 'id' => '[0-9]+'])->middleware('throttle:20,1')->name('documents.send');
     });
+
+    Route::middleware('role:admin')->post('quotes/{quote}/approval-decision', [\App\Http\Controllers\QuoteApprovalController::class, 'decide'])->name('quotes.approval.decide');
+    Route::middleware('role:admin')->post('orders/{order}/approval-decision', [\App\Http\Controllers\OrderApprovalController::class, 'decide'])->name('orders.approval.decide');
 
     // Admin seulement : achats, fournisseurs et paiements fournisseurs
     Route::middleware('role:admin')->group(function () {
-        Route::resource('suppliers', SupplierController::class);
+        Route::get('achats', [PurchaseController::class, 'index'])->name('purchases.index');
+
+        Route::resource('suppliers', SupplierController::class)->except(['create', 'edit']);
         Route::resource('purchase-orders', PurchaseOrderController::class);
         Route::post('purchase-orders/{purchaseOrder}/confirm', [PurchaseOrderController::class, 'confirm'])->name('purchase-orders.confirm');
         Route::post('purchase-orders/{purchaseOrder}/cancel', [PurchaseOrderController::class, 'cancel'])->name('purchase-orders.cancel');
         Route::get('purchase-orders/{purchaseOrder}/pdf', [PurchaseOrderController::class, 'pdf'])->name('purchase-orders.pdf');
         Route::post('purchase-orders/{purchaseOrder}/receipts', [GoodsReceiptController::class, 'store'])->name('purchase-orders.receipts.store');
         Route::get('receipts/{receipt}', [GoodsReceiptController::class, 'show'])->name('receipts.show');
+        Route::get('receipts/{receipt}/pdf', fn (\App\Models\GoodsReceipt $receipt) => redirect()->route('admin.pdf-studio.show', ['type' => 'goods_receipt', 'id' => $receipt->id, 'download' => 1]))->name('receipts.pdf');
         Route::put('receipts/{receipt}', [GoodsReceiptController::class, 'update'])->name('receipts.update');
         Route::delete('receipts/{receipt}', [GoodsReceiptController::class, 'destroy'])->name('receipts.destroy');
         Route::post('receipts/{receipt}/validate', [GoodsReceiptController::class, 'validate'])->name('receipts.validate');
@@ -157,10 +202,6 @@ Route::middleware(['auth', 'active'])->group(function () {
     // Commissions : Admin (gestion) — ⚠️ AVANT le groupe Admin + Commercial,
     // sinon "commissions/payouts/create" serait interprété comme "commissions/payouts/{payout}".
     Route::middleware('role:admin')->group(function () {
-        Route::get('commission-rules', [CommissionRuleController::class, 'index'])->name('commission-rules.index');
-        Route::get('commission-rules/{commercial}', [CommissionRuleController::class, 'show'])->name('commission-rules.show');
-        Route::post('commission-rules/{commercial}', [CommissionRuleController::class, 'store'])->name('commission-rules.store');
-
         Route::get('commissions/payouts/create', [CommissionController::class, 'payoutCreate'])->name('commissions.payouts.create');
         Route::post('commissions/payouts', [CommissionController::class, 'payoutStore'])->name('commissions.payouts.store');
     });
@@ -212,6 +253,7 @@ Route::middleware(['auth', 'active'])->group(function () {
     // Espace Admin
     Route::middleware('role:admin')->prefix('admin')->name('admin.')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'admin'])->name('dashboard');
+        Route::get('/approvals', [\App\Http\Controllers\Admin\ApprovalCenterController::class, 'index'])->name('approvals.index');
 
         Route::resource('commerciaux', CommercialController::class)
             ->parameters(['commerciaux' => 'commercial'])
@@ -226,4 +268,40 @@ Route::middleware(['auth', 'active'])->group(function () {
     });
 });
 
+// Lien PDF signé et temporaire (envoyé par WhatsApp) : pas de connexion requise
+Route::get('d/{type}/{id}', [\App\Http\Controllers\PublicDocumentController::class, 'show'])
+    ->middleware(['signed', 'throttle:30,1'])
+    ->where(['type' => 'quote|invoice', 'id' => '[0-9]+'])
+    ->name('documents.public');
+
 require __DIR__ . '/auth.php';
+
+require __DIR__ . '/hnb_quote_learning.php';
+
+// ATLAS Phase 6O: manually reviewed contact evidence, admin-only.
+require __DIR__ . '/atlas_contact_phase6o.php';
+require __DIR__ . '/ultramsg_phase3b.php';
+require __DIR__ . '/hnb_whatsapp_assistant.php';
+require __DIR__ . '/hnb_whatsapp_conversation.php';
+require __DIR__ . '/hnb_email.php';
+
+require __DIR__ . '/commercial_ai_phase4a.php';
+
+require __DIR__ . '/crm_ai_phase4b.php';
+
+require __DIR__ . '/crm_ai_phase4c.php';
+
+require __DIR__ . '/ai_floating_phase4d.php';
+
+require __DIR__ . '/discovery_phase5b.php';
+
+require __DIR__ . '/discovery_phase6b.php';
+
+require __DIR__ . '/atlas_score_v2.php';
+
+require __DIR__ . '/document_release_sprint_c.php';
+require __DIR__ . '/hnb_direction_notifications.php';
+require __DIR__ . '/hnb_agent_routines.php';
+
+// Isolated admin-only Chromium PDF preview
+require __DIR__.'/hnb_chrome_pdf.php';

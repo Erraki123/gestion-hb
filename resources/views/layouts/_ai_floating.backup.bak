@@ -1,0 +1,144 @@
+{{-- Phase 4E: one premium conversational assistant for admin and commercial. --}}
+@if(auth()->check() && (auth()->user()->isAdmin() || auth()->user()->isCommercial()))
+<style>
+  [x-cloak] { display: none !important; }
+  .hnb-chat-wrap { position:fixed;right:23px;bottom:23px;z-index:90;font-family:inherit; }
+  .hnb-chat-launch { width:56px;height:56px;display:flex;align-items:center;justify-content:center;gap:6px;margin-left:auto;background:#101115;color:#e7bd6b;border:1px solid #c9a05a;border-radius:18px;box-shadow:0 13px 33px rgba(12,12,14,.24);cursor:pointer;transition:transform .2s,box-shadow .2s; }
+  .hnb-chat-launch:hover {transform:translateY(-2px);box-shadow:0 16px 36px rgba(12,12,14,.28)}
+  .hnb-chat-window {width:min(480px,calc(100vw - 28px));height:min(690px,calc(100dvh - 103px));margin-bottom:14px;display:flex;flex-direction:column;overflow:hidden;border:1px solid #e4d6b8;border-radius:22px;background:#fcfcfc;box-shadow:0 23px 75px rgba(22,23,26,.2);}
+  .hnb-chat-header {background:#101114;color:#fff;padding:17px 18px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+  .hnb-chat-mark {width:38px;height:38px;flex:none;border:1px solid rgba(234,192,116,.55);border-radius:12px;display:flex;align-items:center;justify-content:center;color:#e9c57d;background:#25231e;font-size:21px}
+  .hnb-chat-title {font-size:14px;letter-spacing:.05em;font-weight:750;color:#f2d5a1;line-height:1.4}
+  .hnb-chat-sub {font-size:11px;color:#c1c1c3;margin-top:3px}
+  .hnb-chat-close {margin-left:auto;color:#ddd;border:0;background:transparent;border-radius:9px;padding:9px;cursor:pointer}
+  .hnb-chat-close:hover {background:#282a30}
+  .hnb-chat-stream {flex:1;min-height:0;overflow-y:auto;background:linear-gradient(180deg,#fff 0%,#fafaf8 100%);padding:20px 17px;scrollbar-width:thin;scrollbar-color:#dac7a5 transparent;}
+  .hnb-chat-intro {max-width:330px;text-align:center;margin:20px auto 21px;color:#34383c}
+  .hnb-chat-intro-icon {margin:0 auto 12px;border-radius:17px;background:#f5eee0;color:#9c712f;width:48px;height:48px;display:flex;align-items:center;justify-content:center;font-size:24px}
+  .hnb-chat-intro h3 {font-size:17px;font-weight:700;line-height:1.4;margin:0 0 7px}
+  .hnb-chat-intro p {font-size:12px;color:#73777d;line-height:1.7;margin:0}
+  .hnb-chat-chiprow {display:flex;flex-wrap:wrap;justify-content:center;gap:7px;margin:15px 0 4px}
+  .hnb-chat-chip {border:1px solid #dfd8cb;background:#fff;border-radius:999px;padding:7px 11px;font-size:11px;font-weight:600;color:#55534e;cursor:pointer}
+  .hnb-chat-chip:hover {border-color:#b8914b;color:#926921;background:#fffbf3}
+  .hnb-chat-turn {display:flex;gap:9px;margin-bottom:18px;align-items:flex-start}
+  .hnb-chat-turn.is-me {justify-content:flex-end}
+  .hnb-chat-avatar {width:25px;height:25px;display:grid;place-items:center;flex:none;border-radius:9px;background:#171717;color:#e8c782;font-size:13px;margin-top:3px}
+  .hnb-chat-bubble {max-width:88%;padding:11px 13px;font-size:13px;line-height:1.75;white-space:pre-wrap;overflow-wrap:anywhere;border-radius:15px;color:#27292e;background:#f0f0ee;border:1px solid #e7e7e5}
+  .hnb-chat-turn.is-me .hnb-chat-bubble {background:#151515;color:#fff;border-color:#151515;border-bottom-right-radius:5px}
+  .hnb-chat-turn:not(.is-me) .hnb-chat-bubble {background:#fff;border-color:#e9e5dd;border-top-left-radius:5px}
+  .hnb-chat-copier {display:block;margin-top:6px;color:#997133;font-size:11px;font-weight:650;background:none;border:0;cursor:pointer;padding:3px 0}
+  .hnb-chat-bottom {border-top:1px solid #eae6df;background:#fff;padding:13px 15px 10px;flex-shrink:0}
+  .hnb-chat-compose {display:flex;align-items:flex-end;gap:9px;border:1px solid #dcd5ca;border-radius:17px;background:#fff;padding:8px 8px 8px 13px;box-shadow:0 3px 13px rgba(0,0,0,.03)}
+  .hnb-chat-compose:focus-within {border-color:#b58c42;box-shadow:0 0 0 3px rgba(197,154,73,.13)}
+  .hnb-chat-input {width:100%;min-height:38px;max-height:110px;resize:none;outline:0;box-shadow:none!important;border:0!important;background:transparent!important;padding:8px 0!important;font-size:13px!important;line-height:1.5!important;color:#1d2126!important}
+  .hnb-chat-input:focus {box-shadow:none!important;outline:0!important}
+  .hnb-chat-send {height:39px;width:39px;flex:none;display:flex;align-items:center;justify-content:center;border:0;border-radius:12px;background:#171717;color:#e8c278;cursor:pointer}
+  .hnb-chat-send:disabled {opacity:.4;cursor:not-allowed}
+  .hnb-chat-helper {display:flex;justify-content:space-between;gap:8px;margin-top:9px;color:#999;font-size:10px}
+  .hnb-chat-action {color:#8e692e;background:none;border:0;font-size:11px;font-weight:650;cursor:pointer}
+  .hnb-chat-error {color:#9d2d27;font-size:12px;margin:9px 2px;line-height:1.5}
+  @@media (max-width: 640px) {
+    .hnb-chat-wrap {bottom:12px;right:12px}
+    .hnb-chat-window {height:calc(100dvh - 90px);border-radius:18px;margin-bottom:9px}
+    .hnb-chat-launch {width:51px;height:51px;border-radius:16px}
+    .hnb-chat-stream {padding:16px 13px}
+  }
+</style>
+<div x-data="hnBloomChat()" class="hnb-chat-wrap" @keydown.escape.window="opened=false">
+  <section x-cloak x-show="opened" x-transition.opacity.duration.160ms class="hnb-chat-window" role="dialog" aria-label="HN BLOOM assistant IA" aria-modal="false">
+    <header class="hnb-chat-header">
+      <div class="hnb-chat-mark" aria-hidden="true">✦</div>
+      <div style="min-width:0">
+        <div class="hnb-chat-title">HN BLOOM <span style="color:#fff;font-weight:500">· Assistant IA</span></div>
+        <div class="hnb-chat-sub">{{ auth()->user()->isAdmin() ? 'Direction' : 'Commercial' }} · CRM &amp; rédaction</div>
+      </div>
+      <button type="button" class="hnb-chat-close" @click="opened=false" aria-label="Fermer">✕</button>
+    </header>
+    <main class="hnb-chat-stream" x-ref="stream" aria-live="polite">
+      <template x-if="messages.length === 0">
+        <div class="hnb-chat-intro">
+          <div class="hnb-chat-intro-icon">✦</div>
+          <h3>Comment puis-je vous aider ?</h3>
+          <p>Posez une question sur vos clients, produits, stocks, devis ou factures. Je peux aussi préparer vos messages professionnels.</p>
+          <div class="hnb-chat-chiprow">
+            <button class="hnb-chat-chip" type="button" @click="prefill('Quel est le stock du produit CAM-001 ?')">Stock produit</button>
+            <button class="hnb-chat-chip" type="button" @click="prefill('Donne-moi les informations du client Abdo')">Rechercher un client</button>
+            <button class="hnb-chat-chip" type="button" @click="prefill('Rédige un WhatsApp court et professionnel pour présenter HN BLOOM')">Message WhatsApp</button>
+          </div>
+        </div>
+      </template>
+      <template x-for="(item, index) in messages" :key="index">
+        <div class="hnb-chat-turn" :class="item.role === 'user' ? 'is-me' : ''">
+          <template x-if="item.role !== 'user'"><div class="hnb-chat-avatar">✦</div></template>
+          <div style="max-width:90%">
+            <div class="hnb-chat-bubble" x-text="item.text"></div>
+            <template x-if="item.role === 'assistant' && !item.pending">
+              <button type="button" class="hnb-chat-copier" @click="copy(item.text)">Copier la réponse</button>
+            </template>
+          </div>
+        </div>
+      </template>
+      <div x-cloak x-show="error" class="hnb-chat-error" role="alert" x-text="error"></div>
+    </main>
+    <footer class="hnb-chat-bottom">
+      <form @submit.prevent="ask()">
+        <div class="hnb-chat-compose">
+          <textarea x-model="question" x-ref="input" class="hnb-chat-input" maxlength="500" rows="1" placeholder="Écrivez votre message..." aria-label="Votre question" @keydown.enter.exact.prevent="ask()"></textarea>
+          <button type="submit" class="hnb-chat-send" :disabled="loading || question.trim().length < 5" aria-label="Envoyer la question">
+            <span x-show="!loading" aria-hidden="true">➤</span>
+            <span x-cloak x-show="loading" aria-hidden="true">···</span>
+          </button>
+        </div>
+      </form>
+      <div class="hnb-chat-helper">
+        <span>Entrée : envoyer · Maj+Entrée : nouvelle ligne</span>
+        <button type="button" class="hnb-chat-action" @click="reset()">Nouvelle discussion</button>
+      </div>
+    </footer>
+  </section>
+  <button type="button" class="hnb-chat-launch" @click="opened=!opened; if(opened) $nextTick(()=>$refs.input?.focus())" :aria-expanded="opened.toString()" aria-label="Ouvrir l'assistant IA" title="Assistant IA">
+    <span x-show="!opened" style="font-size:25px" aria-hidden="true">✦</span>
+    <span x-cloak x-show="opened" style="font-size:20px" aria-hidden="true">✕</span>
+  </button>
+</div>
+<script>
+function hnBloomChat() {
+  return {
+    opened:false, loading:false, question:'', messages:[], error:null,
+    prefill(text) { this.question=text; },
+    reset() { if(this.loading) return; this.messages=[]; this.question='';this.error=null; },
+    scrollDown() { this.$nextTick(() => { if(this.$refs.stream) this.$refs.stream.scrollTop=this.$refs.stream.scrollHeight; }); },
+    async copy(text) { try { await navigator.clipboard.writeText(text); } catch(e) { this.error='Copie impossible dans ce navigateur.'; } },
+    async ask() {
+      const prompt=this.question.trim();
+      if(this.loading || prompt.length<5) return;
+      this.messages.push({role:'user',text:prompt});
+      this.question='';this.error=null;this.loading=true;
+      this.messages.push({role:'assistant',text:'Je consulte les informations disponibles…',pending:true});
+      this.scrollDown();
+      try {
+        const token=document.querySelector('meta[name="csrf-token"]')?.content;
+        if(!token) throw new Error('Session non disponible. Rechargez cette page.');
+        const response=await fetch(@js(route('admin.ai-floating.ask')),{
+          method:'POST',credentials:'same-origin',
+          headers:{'Accept':'application/json','Content-Type':'application/json','X-CSRF-TOKEN':token},
+          body:JSON.stringify({question:prompt})
+        });
+        if(response.status===419) throw new Error('Session expirée. Rechargez la page.');
+        if(response.status===429) throw new Error('Limite de questions atteinte. Réessayez dans une minute.');
+        if(!response.ok) throw new Error('Impossible de traiter la question. Réessayez.');
+        const result=await response.json();
+        const responseText=result.answer || result.error || 'Aucune réponse disponible pour cette question.';
+        this.messages[this.messages.length-1]={role:'assistant',text:responseText,pending:false};
+      } catch(e) {
+        this.messages[this.messages.length-1]={role:'assistant',text:'Je ne peux pas répondre pour le moment. '+(e.message||''),pending:false};
+      } finally {
+        this.loading=false;
+        if(this.messages.length>24) this.messages=this.messages.slice(-24);
+        this.scrollDown();
+      }
+    }
+  };
+}
+</script>
+@endif

@@ -7,6 +7,7 @@ use App\Models\Commission;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Product;
+use App\Models\SupplierInvoiceLine;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -14,6 +15,10 @@ use Illuminate\Http\Request;
 class ReportService
 {
     public const TYPES = [
+        'vat' => [
+            'label' => 'TVA', 'period' => true, 'commercial' => false, 'admin' => true,
+            'desc'  => 'TVA collectée (ventes), TVA déductible (achats) et TVA à payer, par taux.',
+        ],
         'sales' => [
             'label' => 'Ventes', 'period' => true, 'commercial' => true, 'admin' => false,
             'desc'  => 'Factures émises sur la période (hors brouillons et factures annulées).',
@@ -84,7 +89,7 @@ class ReportService
                     break;
 
                 case 'quarter':
-                    $quarter = max(1, min(4, (int) $r->input('quarter', now()->copy()->subMonth()->quarter)));
+                    $quarter = max(1, min(4, (int) $r->input('quarter', now()->copy()->subMonthNoOverflow()->quarter)));
                     $y       = max(2000, min(2100, (int) $r->input('year', now()->year)));
                     $from    = Carbon::create($y, (($quarter - 1) * 3) + 1, 1)->startOfDay();
                     $to      = $from->copy()->endOfQuarter();
@@ -108,7 +113,7 @@ class ReportService
                     break;
 
                 default:
-                    $defaultMonth = $r->input('month', now()->copy()->subMonth()->format('Y-m'));
+                    $defaultMonth = $r->input('month', now()->copy()->subMonthNoOverflow()->format('Y-m'));
                     $m            = Carbon::createFromFormat('!Y-m', (string) $defaultMonth)->startOfMonth();
                     $from        = $m->copy();
                     $to          = $m->copy()->endOfMonth();
@@ -116,8 +121,8 @@ class ReportService
             }
         } catch (\Throwable) {
             $mode  = 'month';
-            $from  = now()->copy()->subMonth()->startOfMonth();
-            $to    = now()->copy()->subMonth()->endOfMonth();
+            $from  = now()->copy()->subMonthNoOverflow()->startOfMonth();
+            $to    = now()->copy()->subMonthNoOverflow()->endOfMonth();
             $label = 'Mensuel — ' . $from->translatedFormat('F Y');
         }
 
@@ -136,6 +141,7 @@ class ReportService
         $d    = [$period['from']->toDateString(), $period['to']->toDateString()];
 
         $report = match ($type) {
+            'vat'         => $this->vat($d),
             'sales'       => $this->sales($d, $userId, $isAdmin),
             'collections' => $this->collections($d, $userId, $isAdmin),
             'unpaid'      => $this->unpaid($userId, $isAdmin),
@@ -166,13 +172,113 @@ class ReportService
         return round((float) array_sum(array_column($rows, $key)), 2);
     }
 
+    /* ---------------- 0. TVA (admin) ---------------- */
+
+    private function vat(array $d): array
+    {
+        $key = fn ($rate) => number_format((float) $rate, 2, '.', '');
+
+        $sales = [];   // ventes : [taux => ['base' => , 'tax' => ]]
+        $purch = [];   // achats : idem
+
+        $add = function (array &$bucket, float $rate, float $base, float $tax) use ($key) {
+            $k = $key($rate);
+            $bucket[$k]['base'] = ($bucket[$k]['base'] ?? 0.0) + $base;
+            $bucket[$k]['tax']  = ($bucket[$k]['tax'] ?? 0.0) + $tax;
+        };
+
+        // Ventes : factures émises (mêmes règles que le rapport « Ventes »)
+        $invoices = Invoice::with('items')
+            ->where('type', 'facture')
+            ->whereIn('status', Invoice::COUNTED)
+            ->whereBetween('issue_date', $d)
+            ->get();
+
+        foreach ($invoices as $inv) {
+            foreach ($inv->items->groupBy(fn ($i) => $key($i->tax_rate)) as $rate => $group) {
+                $base = round((float) $group->sum('line_total_ht'), 2);
+                $add($sales, (float) $rate, $base, round($base * (float) $rate / 100, 2));
+            }
+        }
+
+        // Avoirs : à déduire
+        $credits = Invoice::with('items')->partialCredits()->whereBetween('issue_date', $d)->get();
+
+        foreach ($credits as $cr) {
+            if ($cr->items->isNotEmpty()) {
+                foreach ($cr->items->groupBy(fn ($i) => $key($i->tax_rate)) as $rate => $group) {
+                    $base = round((float) $group->sum('line_total_ht'), 2);
+                    $add($sales, (float) $rate, -$base, -round($base * (float) $rate / 100, 2));
+                }
+            } else {
+                $add($sales, (float) $cr->tax_rate, -(float) $cr->subtotal_ht, -(float) $cr->tax_amount);
+            }
+        }
+
+        // Achats : factures fournisseur non annulées
+        $lines = SupplierInvoiceLine::query()
+            ->whereHas('supplierInvoice', fn ($q) => $q->where('status', '!=', 'annulee')->whereBetween('invoice_date', $d))
+            ->selectRaw('tax_rate, SUM(base_ht) as b, SUM(tax_amount) as t')
+            ->groupBy('tax_rate')
+            ->get();
+
+        foreach ($lines as $l) {
+            $add($purch, (float) $l->tax_rate, (float) $l->b, (float) $l->t);
+        }
+
+        $rates = array_values(array_unique(array_merge(array_keys($sales), array_keys($purch))));
+        usort($rates, fn ($a, $b) => (float) $a <=> (float) $b);
+
+        $rows = [];
+        foreach ($rates as $k) {
+            $sTax = round($sales[$k]['tax'] ?? 0, 2);
+            $pTax = round($purch[$k]['tax'] ?? 0, 2);
+
+            $rows[] = [
+                'rate'   => rtrim(rtrim($k, '0'), '.') . ' %',
+                's_base' => round($sales[$k]['base'] ?? 0, 2),
+                's_tax'  => $sTax,
+                'p_base' => round($purch[$k]['base'] ?? 0, 2),
+                'p_tax'  => $pTax,
+                'net'    => round($sTax - $pTax, 2),
+            ];
+        }
+
+        $collected  = $this->sum($rows, 's_tax');
+        $deductible = $this->sum($rows, 'p_tax');
+        $net        = round($collected - $deductible, 2);
+
+        return [
+            'columns' => [
+                $this->col('rate', 'Taux de TVA'),
+                $this->col('s_base', 'Ventes HT', 'money'),
+                $this->col('s_tax', 'TVA collectée', 'money'),
+                $this->col('p_base', 'Achats HT', 'money'),
+                $this->col('p_tax', 'TVA déductible', 'money'),
+                $this->col('net', 'TVA nette', 'money'),
+            ],
+            'rows'    => $rows,
+            'totals'  => [
+                's_base' => $this->sum($rows, 's_base'), 's_tax' => $collected,
+                'p_base' => $this->sum($rows, 'p_base'), 'p_tax' => $deductible,
+                'net'    => $net,
+            ],
+            'summary' => [
+                ['label' => 'TVA collectée (ventes)',   'value' => $collected,  'type' => 'money'],
+                ['label' => 'TVA déductible (achats)',  'value' => $deductible, 'type' => 'money', 'tone' => 'good'],
+                ['label' => $net >= 0 ? 'TVA à payer' : 'Crédit de TVA', 'value' => abs($net), 'type' => 'money', 'tone' => $net > 0.005 ? 'warn' : 'good'],
+            ],
+            'note'    => 'Calcul par taux, ligne par ligne, à la date de la facture. Ventes : factures émises, avoirs déduits. Achats : factures fournisseur non annulées. Transport et installation : sans TVA. À valider avec votre comptable.',
+        ];
+    }
+
     /* ---------------- 1. Ventes ---------------- */
 
     private function sales(array $d, ?int $userId, bool $isAdmin): array
     {
         $invoiceRows = Invoice::with(['client', 'commercial'])
             ->where('type', 'facture')
-            ->whereIn('status', ['emise', 'partiellement_payee', 'payee'])
+            ->whereIn('status', Invoice::COUNTED)
             ->whereBetween('issue_date', $d)
             ->when($userId, fn ($q, $id) => $q->where('commercial_id', $id))
             ->orderBy('issue_date')->orderBy('id')
@@ -249,7 +355,7 @@ class ReportService
             'client'     => $p->client?->name,
             'invoice'    => $p->invoice?->number,
             'method'     => $p->methodLabel(),
-            'detail'     => trim(($p->reference ?: '') . ($p->cheque_number ? ' · Chèque n° ' . $p->cheque_number : ''), ' ·'),
+            'detail'     => trim(($p->reference ?: '') . ($p->cheque_number ? ' · Chèque n° ' . $p->cheque_number : '') . ($p->cheque_status === 'en_attente' ? ' (non encaissé)' : ''), ' ·'),
             'commercial' => $p->commercial?->name,
             'amount'     => (float) $p->amount,
         ])->all();
@@ -287,7 +393,7 @@ class ReportService
 
         $rows = Invoice::with(['client', 'commercial'])
             ->where('type', 'facture')
-            ->whereIn('status', ['emise', 'partiellement_payee'])
+            ->whereIn('status', Invoice::OPEN)
             ->when($userId, fn ($q, $id) => $q->where('commercial_id', $id))
             ->orderBy('due_date')->orderBy('id')
             ->get()
@@ -356,20 +462,21 @@ class ReportService
             ->get();
 
         $billed = Invoice::where('type', 'facture')
-            ->whereIn('status', ['emise', 'partiellement_payee', 'payee'])
+            ->whereIn('status', Invoice::COUNTED)
             ->whereBetween('issue_date', $d)
             ->when($userId, fn ($q, $id) => $q->where('commercial_id', $id))
             ->selectRaw('client_id, SUM(total_ttc) as t, COUNT(*) as n')
             ->groupBy('client_id')->get()->keyBy('client_id');
 
         $collected = Payment::where('status', 'valide')
+            ->where(fn ($q) => $q->where('method', '!=', 'cheque')->orWhere('cheque_status', 'encaisse'))
             ->whereBetween('paid_at', $d)
             ->when($userId, fn ($q, $id) => $q->where('commercial_id', $id))
             ->selectRaw('client_id, SUM(amount) as t')
             ->groupBy('client_id')->pluck('t', 'client_id');
 
         $balance = Invoice::where('type', 'facture')
-            ->whereIn('status', ['emise', 'partiellement_payee'])
+            ->whereIn('status', Invoice::OPEN)
             ->when($userId, fn ($q, $id) => $q->where('commercial_id', $id))
             ->selectRaw('client_id, SUM(total_ttc - amount_paid) as t')
             ->groupBy('client_id')->pluck('t', 'client_id');

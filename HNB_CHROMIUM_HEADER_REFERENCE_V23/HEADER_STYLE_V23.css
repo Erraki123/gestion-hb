@@ -1,0 +1,18 @@
+/* HNB_CHROME_REFERENCE_HEADER_V23_START */
+/* Reference: large left wordmark, diagonal right icon strip, slim services baseline */
+.hnb-ref-masthead { padding:0 0 4mm!important; margin:0 0 7mm!important; border-bottom:1.6px solid #b88b45!important; background:#fff!important; break-inside:avoid; }
+.hnb-ref-top{ display:flex; width:100%; align-items:flex-start; justify-content:space-between; gap:3mm; min-height:31mm; }
+.hnb-ref-identity{ flex:0 0 47%; min-width:0; padding-top:0; }
+.hnb-ref-logo{ display:block; width:auto; height:auto; max-width:100%; max-height:29mm; object-fit:contain; object-position:left center; }
+.hnb-ref-wordmark{ font-family:Georgia,serif; font-size:28pt; font-weight:700; color:#b88b45; }
+.hnb-ref-motto{ font-size:7pt; letter-spacing:.12px; color:#37322c; margin-top:1mm; line-height:1.2; }
+.hnb-ref-banner{ position:relative; flex:1; min-width:0; height:25mm; background:linear-gradient(135deg,#38312a,#171614 72%); clip-path:polygon(11% 0,100% 0,100% 100%,0 100%); border-bottom:2px solid #c59e61; padding:1.5mm 2mm 1.5mm 6mm; }
+.hnb-ref-banner:before{content:''; position:absolute; width:100%; height:2.5mm; right:0; top:0; background:linear-gradient(90deg,rgba(199,159,88,.0),#d7bb86); opacity:.8;}
+.hnb-ref-icons{ display:flex; justify-content:space-around; align-items:center; height:100%; gap:1mm; position:relative; z-index:1; }
+.hnb-ref-icon{ display:flex; flex:1; align-items:center; justify-content:center; height:100%; min-width:0; border-right:1px solid rgba(242,221,178,.3); }
+.hnb-ref-icon:last-child{border-right:0}
+.hnb-ref-icon svg{display:block; height:15mm; width:15mm; max-width:100%; fill:none; stroke:#f7ebd5; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+.hnb-ref-sector-line{ margin-top:1.5mm; font-size:9pt; color:#282522; line-height:1.35; letter-spacing:0; overflow-wrap:anywhere; }
+.hnb-ref-sector-line b{ color:#b88b45; font-weight:700; padding:0 1mm; }
+@media screen { .hnb-ref-masthead { margin-bottom:7mm!important; } }
+/* HNB_CHROME_REFERENCE_HEADER_V23_END */

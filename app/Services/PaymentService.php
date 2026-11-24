@@ -18,7 +18,7 @@ class PaymentService
         $payment = DB::transaction(function () use ($invoice, $data, $userId) {
             $inv = Invoice::withoutGlobalScopes()->whereKey($invoice->id)->lockForUpdate()->firstOrFail();
 
-            if ($inv->type !== 'facture' || ! in_array($inv->status, ['emise', 'partiellement_payee'], true)) {
+            if ($inv->type !== 'facture' || ! in_array($inv->status, Invoice::OPEN, true)) {
                 throw ValidationException::withMessages([
                     'amount' => 'Cette facture n\'accepte pas de paiement (brouillon, payée, annulée ou avoir).',
                 ]);
@@ -103,9 +103,27 @@ class PaymentService
             return $this->cancel($payment, $userId, 'Chèque rejeté', 'rejete');
         }
 
-        $payment->update(['cheque_status' => 'encaisse']);
+        $cashed = DB::transaction(function () use ($payment) {
+            $p = Payment::withoutGlobalScopes()->whereKey($payment->id)->lockForUpdate()->firstOrFail();
 
-        return $payment;
+            if ($p->status !== 'valide' || $p->cheque_status !== 'en_attente') {
+                throw ValidationException::withMessages(['payment' => 'Ce chèque a déjà été traité.']);
+            }
+
+            $inv = Invoice::withoutGlobalScopes()->whereKey($p->invoice_id)->lockForUpdate()->firstOrFail();
+
+            $p->update(['cheque_status' => 'encaisse']);
+
+            // L'argent est entré : la facture peut passer à « Payée »
+            $this->refreshInvoice($inv);
+
+            return $p;
+        });
+
+        // Commission « montant fixe » : naît seulement quand l'argent est vraiment entré
+        app(CommissionService::class)->onChequeCashed($cashed);
+
+        return $cashed;
     }
 
     public function refreshInvoiceById(int $id): void
@@ -117,20 +135,36 @@ class PaymentService
         }
     }
 
-    /** Recalcul depuis la somme des paiements valides : source de vérité unique */
+    /**
+     * Recalcul depuis les paiements valides : source de vérité unique.
+     *   amount_paid           = amount_cashed + amount_cheque_pending
+     *   amount_cashed         = espèces + virements + chèques encaissés
+     *   amount_cheque_pending = chèques valides pas encore encaissés
+     */
     private function refreshInvoice(Invoice $inv): void
     {
         $net = max(0.0, (float) $inv->total_ttc - (float) $inv->creditedAmount());
-        $paid = round((float) Payment::withoutGlobalScopes()
-            ->where('invoice_id', $inv->id)->where('status', 'valide')->sum('amount'), 2);
 
-        $data = ['amount_paid' => $paid];
+        $valid = Payment::withoutGlobalScopes()
+            ->where('invoice_id', $inv->id)->where('status', 'valide');
 
-        if (in_array($inv->status, ['emise', 'partiellement_payee', 'payee'], true)) {
+        $paid = round((float) (clone $valid)->sum('amount'), 2);
+
+        $pending = round((float) (clone $valid)
+            ->where('method', 'cheque')->where('cheque_status', 'en_attente')->sum('amount'), 2);
+
+        $data = [
+            'amount_paid'           => $paid,
+            'amount_cashed'         => round($paid - $pending, 2),
+            'amount_cheque_pending' => $pending,
+        ];
+
+        if (in_array($inv->status, Invoice::COUNTED, true)) {
             if ($net <= 0.005 && $paid == 0) {
                 $data['status'] = 'annulee';
             } elseif ($paid >= $net - 0.005) {
-                $data['status'] = 'payee';
+                // Entièrement couverte : « Payée » seulement si aucun chèque n'est en attente
+                $data['status'] = $pending > 0.005 ? 'cheque_en_attente' : 'payee';
             } elseif ($paid > 0) {
                 $data['status'] = 'partiellement_payee';
             } else {

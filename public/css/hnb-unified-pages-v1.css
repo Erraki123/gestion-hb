@@ -1,0 +1,81 @@
+/* HN BLOOM LOCAL - New Pages Design System / Clients-style compact tables */
+.hnb-ui .hnb-v2-page,.hnb-ui .hnb-unified-page{max-width:1340px;margin:0 auto;padding:12px 18px 26px;font-size:13px;line-height:1.45;color:#20211f}
+.hnb-ui .hnb-v2-header{position:relative;display:flex;align-items:center;justify-content:center;gap:10px;text-align:center;min-height:44px}
+.hnb-ui .hnb-v2-header h2{font-size:18px!important;line-height:1.2;font-weight:800;margin:0;color:#fff}
+.hnb-ui .hnb-v2-header p{font-size:11px;margin-top:3px;color:#a7a39c}
+.hnb-ui .hnb-v2-head-action{position:absolute;right:0;top:50%;transform:translateY(-50%);font-size:11px;font-weight:750;color:#efce83;border:1px solid #a88645;border-radius:7px;padding:6px 11px}
+.hnb-ui .hnb-v2-panel{border:1px solid #e5dfd3;border-radius:12px;background:#fff;overflow:hidden;box-shadow:0 5px 18px rgba(25,22,14,.035)}
+.hnb-ui .hnb-v2-toolbar{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid #ebe5d9;background:#fff}
+.hnb-ui .hnb-v2-toolbar strong{display:block;font-size:13px;font-weight:800;color:#1f201e}
+.hnb-ui .hnb-v2-toolbar span:not(.hnb-v2-count){display:block;font-size:11px;margin-top:2px;color:#7a7973}
+.hnb-ui .hnb-v2-count,.hnb-ui .hnb-v2-stat{background:#f7f0e1;border:1px solid #efdfbb;border-radius:7px;padding:6px 10px;color:#70501b;font-weight:700;font-size:11px;white-space:nowrap}
+.hnb-ui .hnb-v2-bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:9px}
+.hnb-ui .hnb-v2-scroll{overflow-x:auto;max-width:100%}
+.hnb-ui .hnb-v2-table{width:100%;min-width:690px;border-collapse:collapse;font-size:12px;text-align:left;background:#fff}
+.hnb-ui .hnb-v2-table thead{background:#171813!important}
+.hnb-ui .hnb-v2-table thead th{background:#171813!important;border-bottom:2px solid #c9a048!important;color:#fff!important;padding:11px 12px!important;font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.045em;white-space:nowrap}
+.hnb-ui .hnb-v2-table tbody tr{border-bottom:1px solid #f0ece4}
+.hnb-ui .hnb-v2-table tbody tr:hover{background:#fffdf9}
+.hnb-ui .hnb-v2-table tbody td{padding:10px 12px!important;vertical-align:middle;color:#282a2c;line-height:1.45}
+.hnb-ui .hnb-v2-table tbody tr:last-child{border-bottom:0}
+.hnb-ui .hnb-v2-table .hnb-v2-right{text-align:right}
+.hnb-ui .hnb-v2-table tbody td:last-child{min-width:145px}
+.hnb-ui .hnb-v2-strong{font-size:12px;font-weight:750;color:#1b1c1a;overflow-wrap:anywhere}
+.hnb-ui .hnb-v2-detail{font-size:11px;color:#67707b;overflow-wrap:anywhere;max-width:540px;white-space:pre-wrap}
+.hnb-ui .hnb-v2-small{margin-top:3px;font-size:10px;color:#777b81}
+.hnb-ui .hnb-v2-nowrap{white-space:nowrap}
+.hnb-ui .hnb-v2-status{display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:999px;background:#e9f2ea;color:#296445;font-size:10px;font-weight:800;white-space:nowrap}
+.hnb-ui .hnb-v2-status.is-high{background:#fff3d9;color:#86591c}
+.hnb-ui .hnb-v2-status.is-critical{background:#fce8e6;color:#a73535}
+.hnb-ui .hnb-v2-status.is-muted{background:#f1f1ee;color:#777b81}
+.hnb-ui .hnb-v2-actions{display:flex;gap:6px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.hnb-ui .hnb-v2-actions form{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.hnb-ui .hnb-v2-btn{display:inline-flex;align-items:center;justify-content:center;background:#171813!important;color:#f7dd9d!important;border:1px solid #171813;border-radius:7px;padding:7px 10px;font-size:11px;font-weight:800;white-space:nowrap;line-height:1.15;cursor:pointer;min-height:31px;text-decoration:none}
+.hnb-ui .hnb-v2-btn.is-light{background:#fffaf0!important;color:#7a5014!important;border-color:#d3a951}
+.hnb-ui .hnb-v2-btn.is-danger{background:#fff7f7!important;color:#b13b35!important;border-color:#e8b1af}
+.hnb-ui .hnb-v2-btn:hover{filter:brightness(.96)}
+.hnb-ui .hnb-v2-btn:focus-visible,.hnb-ui .hnb-v2-filter-link:focus-visible{outline:3px solid #dfb552;outline-offset:2px}
+.hnb-ui .hnb-v2-select{min-width:90px!important;border:1px solid #ded4c5!important;border-radius:6px!important;padding:4px 6px!important;font-size:11px!important;background:#fff!important;color:#30302f!important;min-height:31px!important}
+.hnb-ui .hnb-v2-filter-link{color:#a27623;font-size:11px;font-weight:750;text-decoration:underline;text-underline-offset:3px}
+.hnb-ui .hnb-v2-empty{padding:28px 12px!important;text-align:center;color:#85817a!important;font-size:12px}
+.hnb-ui .hnb-v2-footnote{font-size:11px;line-height:1.55;color:#7d817e;margin-top:10px}
+.hnb-ui .hnb-v2-flash{border:1px solid #b9dec5;background:#ecf8ef;border-radius:8px;padding:9px 12px;color:#226743;font-size:12px;margin:0 0 9px}
+.hnb-ui .hnb-v2-flash.is-error{border-color:#ebbbb3;background:#fff1ee;color:#90382f}
+.hnb-ui .hnb-v2-pagination{margin-top:10px}
+.hnb-ui .hnb-v2-message{white-space:pre-wrap;overflow-wrap:anywhere;max-width:480px;font-size:12px;color:#3a3b3d;margin:10px 0}
+.hnb-ui .hnb-v2-review{border-top:1px solid #e8dfcf;padding:10px 0 0;min-width:min(450px,75vw);max-width:480px}
+.hnb-ui .hnb-v2-review form{margin-top:10px}
+.hnb-ui .hnb-v2-confirm{display:flex;align-items:flex-start;gap:6px;font-size:11px;color:#4b4d50;margin:0 0 9px}
+.hnb-ui .hnb-v2-details{position:relative}
+.hnb-ui .hnb-v2-details summary{list-style:none;user-select:none}
+.hnb-ui .hnb-v2-details summary::-webkit-details-marker{display:none}
+.hnb-ui .hnb-v2-details[open] summary{margin-bottom:6px}
+/* Same visual language for new form/report/analysis pages, without changing fields or JS behavior */
+.hnb-ui .hnb-unified-page{padding-top:12px!important;padding-bottom:23px!important;max-width:1340px!important}
+.hnb-ui .hnb-unified-page.space-y-4 > :not([hidden]) ~ :not([hidden]),.hnb-ui .hnb-unified-page.space-y-5 > :not([hidden]) ~ :not([hidden]){margin-top:10px}
+.hnb-ui .hnb-unified-page > section,.hnb-ui .hnb-unified-page > article,.hnb-ui .hnb-unified-page > form,.hnb-ui .hnb-unified-page > .panel{border-radius:12px!important;border-color:#e6dfd2!important;background:#fff!important;color:#222!important;box-shadow:0 5px 18px rgba(25,22,14,.035)!important;padding:13px 15px!important}
+.hnb-ui .hnb-unified-page > section > h3,.hnb-ui .hnb-unified-page > .panel > h3{font-size:13px;font-weight:800;color:#20211f;padding-bottom:8px;margin-bottom:5px;border-bottom:1px solid #e9e5dd}
+.hnb-ui .hnb-unified-page :is(input,select,textarea):not([type=checkbox]):not([type=radio]){border-color:#d8cdbb;border-radius:8px;background:#fff;color:#2a2a2a;font-size:12px}
+.hnb-ui .hnb-unified-page :is(button,a).bg-stone-950,.hnb-ui .hnb-unified-page :is(button,a).bg-gray-950{background:#171813!important;color:#f7dd9d!important;border-radius:7px}
+.hnb-ui .hnb-unified-page :is(button,a).border-amber-500{border-color:#c9a048!important;color:#78521c!important}
+.hnb-ui .hnb-unified-page .overflow-x-auto:has(table){border:1px solid #ece7dd;border-radius:10px;overflow-x:auto}
+.hnb-ui .hnb-unified-page table{font-size:11px;border-collapse:collapse;background:#fff;min-width:640px}
+.hnb-ui .hnb-unified-page table > thead{background:#171813!important}
+.hnb-ui .hnb-unified-page table > thead > tr > th{background:#171813!important;color:#fff!important;border-bottom:2px solid #c9a048!important;padding:10px!important;font-size:10px;font-weight:800;letter-spacing:.035em;text-transform:uppercase}
+.hnb-ui .hnb-unified-page table tbody tr{border-bottom:1px solid #f0ece5}
+.hnb-ui .hnb-unified-page table tbody tr:hover{background:#fffdf9}
+.hnb-ui .hnb-unified-page table tbody td{padding:9px 10px!important;vertical-align:middle}
+.hnb-ui .hnb-unified-page .grid > div.rounded-xl.border,.hnb-ui .hnb-unified-page .grid > div.rounded-lg.border{border-color:#e6dfd2!important;border-radius:9px;background:#fbfaf6!important;padding:10px!important}
+@media(max-width:760px){
+ .hnb-ui .hnb-v2-page,.hnb-ui .hnb-unified-page{padding:10px 9px 19px!important}
+ .hnb-ui .hnb-v2-header{min-height:40px}
+ .hnb-ui .hnb-v2-header h2{font-size:15px!important}
+ .hnb-ui .hnb-v2-head-action{display:none}
+ .hnb-ui .hnb-v2-table{min-width:620px}
+ .hnb-ui .hnb-v2-table thead th{padding:9px 10px!important}
+ .hnb-ui .hnb-v2-table tbody td{padding:9px 10px!important}
+ .hnb-ui .hnb-v2-toolbar{padding:10px}
+ .hnb-ui .hnb-v2-review{min-width:260px;max-width:340px}
+ .hnb-ui .hnb-unified-page > section,.hnb-ui .hnb-unified-page > article,.hnb-ui .hnb-unified-page > form,.hnb-ui .hnb-unified-page > .panel{padding:12px!important}
+}
+@media(prefers-reduced-motion:reduce){.hnb-ui .hnb-v2-btn{transition:none!important}}

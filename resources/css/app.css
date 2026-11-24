@@ -4,106 +4,134 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ---------- Palette Or & Noir (modifier ici = change tout) ---------- */
+:root {
+    --black: #0A0A0A;
+    --coal: #1C1710;
+    --bronze: #4A3A14;
+    --brass: #8A6A1E;
+    --gold: #C79A2E;
+    --gold-light: #EBCB74;
+    --gold-tint: #FBF6E8;
+    --line: #E8E2D2;
+    --surface: #F7F5F0;      /* fond des cartes : crème/gris chaud, doux pour les yeux */
+    --surface-line: #E4DDCB;
+    --surface-hover: #EFE9D8;
+    --gold-grad: linear-gradient(135deg, #8A6A1E 0%, #C79A2E 45%, #EBCB74 100%);
+    --night-grad: linear-gradient(160deg, #0A0A0A 0%, #1C1710 55%, #4A3A14 100%);
+}
+
 [x-cloak] { display: none !important; }
 html { scroll-behavior: smooth; }
-body { background: #F5F6FA; }
-::selection { background: #DDD6FE; color: #2E1065; }
+body { background: #FFFFFF; color: #0A0A0A; }
+::selection { background: #F3E3B0; color: #0A0A0A; }
 ::placeholder { color: #9CA3AF !important; }
-* { scrollbar-width: thin; scrollbar-color: #D1D5DB transparent; }
+* { scrollbar-width: thin; scrollbar-color: #C9BFA3 transparent; }
+:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* ---------- Barre latérale : fond noir, texte blanc ---------- */
+aside { background: var(--night-grad); color: #fff; }
 
 /* ---------- الحقول ---------- */
 input:not([type=checkbox]):not([type=radio]):not([type=file]):not([type=submit]):not([type=button]),
 select, textarea {
-    background-color: #fff; border: 1px solid #D1D5DB; color: #111827;
+    background-color: #fff; border: 1px solid #D6CFBC; color: #0A0A0A;
     border-radius: .65rem; font-size: .875rem;
 }
 input:not([type=checkbox]):not([type=radio]):not([type=file]):focus, select:focus, textarea:focus {
-    border-color: #7C3AED; box-shadow: 0 0 0 3px rgba(124,58,237,.15); outline: none;
+    border-color: var(--gold); box-shadow: 0 0 0 3px rgba(199,154,46,.22); outline: none;
 }
-[type=checkbox], [type=radio] { color: #7C3AED; border-color: #D1D5DB; }
+[type=checkbox], [type=radio] { color: var(--gold); border-color: #D6CFBC; }
 
 /* ---------- البطاقات ---------- */
 .panel {
-    background: #fff; border: 1px solid #E8EAF0; border-radius: 1rem;
-    box-shadow: 0 1px 2px rgba(16,24,40,.04), 0 6px 20px rgba(16,24,40,.05);
+    background: var(--surface); border: 1px solid var(--surface-line); border-radius: 1rem;
+    box-shadow: 0 1px 2px rgba(10,10,10,.04), 0 6px 18px rgba(10,10,10,.04);
 }
-.panel-title { display: flex; align-items: center; gap: .6rem; font-size: .95rem; font-weight: 600; color: #111827; }
+.panel-title { display: flex; align-items: center; gap: .6rem; font-size: .95rem; font-weight: 600; color: #0A0A0A; }
 .panel-title .ico {
     display: inline-flex; height: 2rem; width: 2rem; align-items: center; justify-content: center;
-    border-radius: .6rem; background: #EDE9FE; color: #6D28D9;
+    border-radius: .6rem; background: var(--black); color: var(--gold-light);
 }
 
 /* ---------- عنوان الصفحة ---------- */
 .page-head h2 {
     display: flex; align-items: center; gap: .75rem; flex-wrap: wrap;
-    font-size: 1.6rem; line-height: 2rem; font-weight: 700; letter-spacing: -.02em; color: #111827;
+    font-size: 1.6rem; line-height: 2rem; font-weight: 700; letter-spacing: -.02em; color: #0A0A0A;
 }
 .page-head h2::before {
     content: ''; width: 5px; height: 1.6rem; border-radius: 6px; flex-shrink: 0;
-    background: linear-gradient(180deg, #8B5CF6, #F59E0B);
+    background: linear-gradient(180deg, #EBCB74, #C79A2E 50%, #0A0A0A);
 }
 
-/* ---------- الجداول ---------- */
-table thead { background: #F9FAFB; }
+/* ---------- الجداول : entête noir, texte blanc ---------- */
+table thead { background: var(--black); }
 table thead th {
     font-size: .72rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
-    color: #6B7280; white-space: nowrap; border-bottom: 1px solid #E5E7EB;
+    color: #fff; white-space: nowrap; border-bottom: 2px solid var(--gold);
 }
 table tbody tr { transition: background-color .15s ease; }
-table tbody tr:hover { background-color: #F8F7FF; }
-table tbody tr + tr { border-top: 1px solid #F0F1F5; }
-table tfoot td { border-top: 2px solid #7C3AED; }
+table tbody tr:hover { background-color: var(--surface-hover); }
+table tbody tr + tr { border-top: 1px solid var(--surface-line); }
+table tfoot td { border-top: 2px solid var(--gold); }
 table td.flex { align-items: center; gap: .5rem; }
 
 /* ---------- الأزرار ---------- */
-a.bg-gold-500, button.bg-gold-500, a.bg-indigo-600, button.bg-indigo-600 { color: #fff; font-weight: 600; }
-a.bg-indigo-600, button.bg-indigo-600 {
-    border-radius: .7rem; box-shadow: 0 6px 16px rgba(124,58,237,.28); transition: all .15s ease;
+a.bg-gold-500, button.bg-gold-500, a.bg-indigo-600, button.bg-indigo-600 {
+    background: var(--gold-grad); color: #0A0A0A; font-weight: 700;
+    border-radius: .7rem; box-shadow: 0 6px 16px rgba(138,106,30,.32); transition: all .15s ease;
 }
-a.bg-indigo-600:hover, button.bg-indigo-600:hover { transform: translateY(-1px); filter: brightness(1.06); }
+a.bg-gold-500:hover, button.bg-gold-500:hover, a.bg-indigo-600:hover, button.bg-indigo-600:hover {
+    transform: translateY(-1px); filter: brightness(1.06);
+}
 a.rounded, button.rounded { font-size: .8rem; font-weight: 600; transition: all .15s ease; }
-a.bg-yellow-500, button.bg-yellow-500 { background: #F59E0B; color: #fff; }
-a.bg-gray-700, button.bg-gray-700 { background: #1F2937; color: #fff; }
-a.bg-gray-700:hover, button.bg-gray-700:hover { background: #111827; }
+a.bg-yellow-500, button.bg-yellow-500 { background: #C79A2E; color: #0A0A0A; }
+a.bg-gray-700, button.bg-gray-700 { background: var(--black); color: #fff; }
+a.bg-gray-700:hover, button.bg-gray-700:hover { background: var(--coal); }
 
 .act {
     display: inline-flex; align-items: center; padding: .3rem .75rem; border-radius: .6rem;
-    font-size: .75rem; font-weight: 600; color: #6D28D9; background: #F5F3FF; border: 1px solid #DDD6FE;
+    font-size: .75rem; font-weight: 600; color: #0A0A0A; background: var(--gold-tint); border: 1px solid var(--gold);
     transition: all .15s ease;
 }
-.act:hover { background: #EDE9FE; transform: translateY(-1px); }
-.act-danger { color: #DC2626; background: #FEF2F2; border-color: #FECACA; }
+.act:hover { background: var(--gold-grad); transform: translateY(-1px); }
+.act-danger { color: #B42318; background: #FEF2F2; border-color: #FECACA; }
 .act-danger:hover { background: #FEE2E2; }
 
 .chip {
     display: inline-flex; align-items: center; padding: .5rem 1rem; border-radius: .7rem;
-    font-size: .8rem; font-weight: 600; color: #374151; background: #fff; border: 1px solid #E5E7EB;
+    font-size: .8rem; font-weight: 600; color: #0A0A0A; background: #fff; border: 1px solid var(--line);
     transition: all .15s ease;
 }
-.chip:hover { border-color: #C4B5FD; color: #6D28D9; }
-.chip-on { background: #7C3AED; color: #fff; border-color: #7C3AED; }
-.chip-on:hover { color: #fff; }
+.chip:hover { border-color: var(--gold); background: var(--gold-tint); }
+.chip-on { background: var(--black); color: #fff; border-color: var(--black); }
+.chip-on:hover { color: #fff; background: var(--coal); }
 
 .rank {
     display: inline-flex; height: 1.75rem; width: 1.75rem; align-items: center; justify-content: center;
-    border-radius: 9999px; font-size: .75rem; font-weight: 700; background: #EDE9FE; color: #6D28D9;
+    border-radius: 9999px; font-size: .75rem; font-weight: 700; background: var(--black); color: var(--gold-light);
 }
-.bar { height: .4rem; border-radius: 9999px; background: #EEF0F5; overflow: hidden; }
-.bar > i { display: block; height: 100%; border-radius: 9999px; background: linear-gradient(90deg, #8B5CF6, #F59E0B); }
+.bar { height: .4rem; border-radius: 9999px; background: #E4DDCB; overflow: hidden; }
+.bar > i { display: block; height: 100%; border-radius: 9999px; background: linear-gradient(90deg, #1C1710, #4A3A14, #8A6A1E, #C79A2E, #EBCB74); }
 
 /* ---------- تعديلات بقايا الوضع الداكن ---------- */
-.border-white\/5, .border-white\/10 { border-color: #EEF0F5; }
-.divide-white\/5 > :not([hidden]) ~ :not([hidden]) { border-color: #EEF0F5; }
-.bg-black\/20 { background-color: rgba(17,24,39,.035); }
-aside .border-white\/5 { border-color: rgba(255,255,255,.08); }
-main .hover\:text-white:hover { color: #6D28D9; }
-.border-2.border-dashed { border-color: #D1D5DB; background: #FAFAFC; }
-input[type=file] { color: #6B7280; }
+.border-white\/5, .border-white\/10 { border-color: #EEE9DA; }
+.divide-white\/5 > :not([hidden]) ~ :not([hidden]) { border-color: #EEE9DA; }
+.bg-black\/20 { background-color: rgba(10,10,10,.035); }
+aside .border-white\/5 { border-color: rgba(255,255,255,.1); }
+main .hover\:text-white:hover { color: var(--brass); }
+.border-2.border-dashed { border-color: #D6CFBC; background: #FDFBF5; }
+input[type=file] { color: #6B6455; }
 input[type=file]::file-selector-button {
-    background: #F5F3FF; color: #6D28D9; border: 1px solid #DDD6FE;
+    background: var(--gold-tint); color: #0A0A0A; border: 1px solid var(--gold);
     border-radius: .5rem; padding: .35rem .8rem; margin-right: .75rem; cursor: pointer;
 }
 nav[role=navigation] a, nav[role=navigation] span[aria-current] span { border-radius: .5rem; }
 
 /* ---------- الأزرار الصغيرة داخل الجداول القديمة ---------- */
 span.px-2.py-1.rounded { border-radius: 9999px; padding: .2rem .7rem; font-weight: 600; }
+
+/* ---------- Fonds doux : page blanche, cartes et bandeau en crème ---------- */
+.page-head { background-color: var(--surface); }          /* supprimez cette ligne pour garder le bandeau blanc */
+.panel .bg-gray-100 { background-color: #fff; }           /* petits compteurs (onglets) */
+.panel .bg-gold-50 { background-color: #fff; }            /* ligne de filtres des tableaux */

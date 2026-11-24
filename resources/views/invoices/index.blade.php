@@ -1,79 +1,203 @@
-<x-app-layout>
-    <x-slot name="header"><h2 class="font-semibold text-xl text-gray-800">Factures</h2></x-slot>
+@php
+    $isAdmin = auth()->user()->isAdmin();
+    $tabs = [
+        'tous'        => 'Toutes',
+        'a_encaisser' => 'À encaisser',
+        'en_retard'   => 'En retard',
+        'payees'      => 'Payées',
+        'avoirs'      => 'Avoirs',
+    ];
+    $filters = [
+        'tab'           => (string) $tab,
+        'q'             => (string) request('q', ''),
+        'from'          => (string) request('from', ''),
+        'to'            => (string) request('to', ''),
+        'commercial_id' => (string) request('commercial_id', ''),
+    ];
+@endphp
+<x-app-layout dark-header>
+    <x-slot name="header">
+        <div class="grid items-center gap-3 text-center lg:grid-cols-3">
+            <div class="hidden lg:block"></div>
 
-    <div class="py-8 max-w-7xl mx-auto sm:px-6 lg:px-8 space-y-4">
+            <div>
+                <h2 class="justify-center !text-lg !leading-tight">Factures</h2>
+                <p class="text-xs text-gray-500"
+                   x-data="{ n: {{ $invoices->total() }} }" x-on:invoices-total.window="n = $event.detail">
+                    <span x-text="n">{{ $invoices->total() }}</span> résultat(s)
+                </p>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-center gap-3 text-xs lg:justify-end">
+                <a href="{{ route('receivables.index') }}" class="text-gray-300 hover:text-gold-300">Créances</a>
+                <a href="{{ route('payments.index') }}" class="text-gray-300 hover:text-gold-300">Paiements</a>
+                <a href="{{ route('returns.index') }}" class="text-gray-300 hover:text-gold-300">Retours</a>
+                <a href="{{ route('invoices.create') }}"
+                   class="inline-flex items-center gap-1 rounded-lg border border-gold-300 bg-gold-100 px-3 py-1.5 text-xs font-semibold text-gray-900 shadow-sm transition hover:bg-gold-200">
+                    <span class="text-base leading-none">+</span> Nouvelle facture
+                </a>
+            </div>
+        </div>
+    </x-slot>
+
+    <style>
+        header, header > div { padding-top: .5rem !important; padding-bottom: .5rem !important; }
+        .inv-compact table { font-size: .8rem; }
+        .inv-compact thead th { padding: .5rem .75rem; font-size: .68rem; }
+        .inv-compact tbody td { padding: .4rem .75rem; }
+        .inv-compact tbody .text-xs { font-size: .68rem; line-height: 1rem; }
+        .inv-compact tbody td .flex { gap: .4rem; }
+        .inv-compact tbody td .flex a, .inv-compact tbody td .flex button { padding: .2rem .55rem; font-size: .7rem; }
+    </style>
+
+    <div class="inv-compact max-w-7xl mx-auto px-4 py-3 sm:px-6 lg:px-8 space-y-3">
         @if (session('success'))
-            <div class="p-3 bg-green-100 text-green-800 rounded">{{ session('success') }}</div>
+            <div class="rounded-xl border border-green-200 bg-green-100 p-2.5 text-sm text-green-800">{{ session('success') }}</div>
+        @endif
+        @if ($errors->any())
+            <div class="rounded-xl border border-red-200 bg-red-100 p-2.5 text-sm text-red-800">@foreach ($errors->all() as $e)<div>{{ $e }}</div>@endforeach</div>
         @endif
 
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="bg-white p-4 rounded shadow">
-                <div class="text-xs text-gray-500">Total facturé</div>
-                <div class="text-lg font-bold">{{ number_format($stats['billed'], 2, ',', ' ') }} DH</div>
-            </div>
-            <div class="bg-white p-4 rounded shadow">
-                <div class="text-xs text-gray-500">Encaissé</div>
-                <div class="text-lg font-bold text-green-700">{{ number_format($stats['paid'], 2, ',', ' ') }} DH</div>
-            </div>
-            <div class="bg-white p-4 rounded shadow">
-                <div class="text-xs text-gray-500">Reste à payer</div>
-                <div class="text-lg font-bold text-orange-600">{{ number_format($stats['remaining'], 2, ',', ' ') }} DH</div>
-            </div>
-            <a href="{{ route('invoices.index', ['status' => 'en_retard']) }}" class="bg-red-50 p-4 rounded shadow">
-                <div class="text-xs text-red-700">En retard</div>
-                <div class="text-lg font-bold text-red-700">{{ number_format($stats['late'], 2, ',', ' ') }} DH</div>
-            </a>
-        </div>
+        {{-- Les chiffres : une seule ligne --}}
+        <p class="text-sm text-gray-600">
+            Facturé <strong class="text-gray-900">{{ number_format($stats['billed'], 2, ',', ' ') }}</strong>
+            · Encaissé <strong class="text-green-700">{{ number_format($stats['cashed'], 2, ',', ' ') }}</strong>
+            @if ($stats['cheques'] > 0)
+                · Chèques en attente <strong class="text-yellow-700">{{ number_format($stats['cheques'], 2, ',', ' ') }}</strong>
+            @endif
+            · Reste <strong class="text-orange-600">{{ number_format($stats['remaining'], 2, ',', ' ') }}</strong>
+            @if ($stats['late'] > 0)
+                · En retard <strong class="text-red-700">{{ number_format($stats['late'], 2, ',', ' ') }}</strong>
+            @endif
+            DH
+        </p>
 
-        <form method="GET" class="flex flex-wrap gap-2">
-            <input type="text" name="q" value="{{ request('q') }}" placeholder="N° ou client..." class="border-gray-300 rounded w-full sm:w-64">
-            <select name="status" class="border-gray-300 rounded">
-                <option value="">Tous les statuts</option>
-                @foreach (['brouillon' => 'Brouillon', 'emise' => 'Émise', 'partiellement_payee' => 'Partiellement payée', 'payee' => 'Payée', 'en_retard' => 'En retard', 'annulee' => 'Annulée'] as $v => $l)
-                    <option value="{{ $v }}" @selected(request('status') === $v)>{{ $l }}</option>
-                @endforeach
-            </select>
-            <select name="type" class="border-gray-300 rounded">
-                <option value="">Factures et avoirs</option>
-                <option value="facture" @selected(request('type') === 'facture')>Factures</option>
-                <option value="avoir" @selected(request('type') === 'avoir')>Avoirs</option>
-            </select>
-            <button class="px-4 py-2 bg-gray-800 text-white rounded">Filtrer</button>
-        </form>
+        <div x-data="invoicesTable(@js([
+                'url'     => route('invoices.index'),
+                'filters' => $filters,
+                'rows'    => view('invoices._rows', ['invoices' => $invoices])->render(),
+                'links'   => (string) $invoices->links(),
+                'total'   => $invoices->total(),
+            ]))" class="space-y-3">
 
-        <div class="bg-white rounded shadow overflow-x-auto">
-            <table class="min-w-full text-sm">
-                <thead class="bg-gray-50 text-left">
-                    <tr>
-                        <th class="p-3">N°</th><th class="p-3">Client</th><th class="p-3">Date</th>
-                        <th class="p-3">Échéance</th><th class="p-3">Total TTC</th><th class="p-3">Reste</th>
-                        <th class="p-3">Statut</th><th class="p-3"></th>
-                    </tr>
-                </thead>
-                <tbody>
-                @forelse ($invoices as $inv)
-                    <tr class="border-t">
-                        <td class="p-3 font-medium">
-                            {{ $inv->displayNumber() }}
-                            @if ($inv->type === 'avoir') <span class="text-xs text-purple-600">(avoir)</span> @endif
-                        </td>
-                        <td class="p-3">{{ $inv->client?->name }}</td>
-                        <td class="p-3">{{ $inv->issue_date->format('d/m/Y') }}</td>
-                        <td class="p-3">{{ $inv->due_date?->format('d/m/Y') ?? '—' }}</td>
-                        <td class="p-3">{{ number_format($inv->total_ttc, 2, ',', ' ') }}</td>
-                        <td class="p-3">{{ $inv->type === 'facture' && $inv->status !== 'brouillon' ? number_format($inv->balance(), 2, ',', ' ') : '—' }}</td>
-                        <td class="p-3"><x-status-badge :status="$inv->displayStatus()" /></td>
-                        <td class="p-3 flex gap-3">
-                            <a href="{{ route('invoices.show', $inv) }}" class="text-indigo-600">Voir</a>
-                            <a href="{{ route('invoices.pdf', $inv) }}" target="_blank" class="text-gray-600">PDF</a>
-                        </td>
-                    </tr>
-                @empty
-                    <tr><td colspan="8" class="p-4 text-center text-gray-500">Aucune facture.</td></tr>
-                @endforelse
-                </tbody>
-            </table>
+            {{-- UNE seule section de filtres : onglets + recherche + période (+ commercial pour l'admin) --}}
+            <div class="panel space-y-3 p-3">
+                <div class="flex flex-wrap items-center gap-2">
+                    @foreach ($tabs as $key => $label)
+                        <button type="button" @click="setTab('{{ $key }}')"
+                                :class="f.tab === '{{ $key }}' ? 'rounded-lg bg-gold-500 px-3 py-1.5 text-xs font-semibold text-gray-950' : 'act'">
+                            {{ $label }}@if (($counts[$key] ?? 0) > 0)<span class="ml-1 opacity-70">{{ $counts[$key] }}</span>@endif
+                        </button>
+                    @endforeach
+                </div>
+
+                <div class="flex flex-wrap items-center gap-2 border-t border-gold-200 pt-3">
+                    <input type="search" x-model="f.q" @input="queue()" aria-label="Recherche"
+                           placeholder="🔎 N° facture, client, chèque, montant…" class="min-w-[14rem] flex-1 py-1.5 text-xs">
+
+                    @if ($isAdmin)
+                        <select x-model="f.commercial_id" @change="load(1)" aria-label="Commercial" class="py-1.5 text-xs">
+                            <option value="">Commercial : tous</option>
+                            @foreach ($commerciaux as $c)
+                                <option value="{{ $c->id }}">{{ $c->name }}</option>
+                            @endforeach
+                        </select>
+                    @endif
+
+                    <label class="flex items-center gap-1 text-[11px] text-gray-500">Du
+                        <input type="date" x-model="f.from" @change="load(1)" class="py-1 text-xs"></label>
+                    <label class="flex items-center gap-1 text-[11px] text-gray-500">Au
+                        <input type="date" x-model="f.to" @change="load(1)" class="py-1 text-xs"></label>
+
+                    <button type="button" x-show="active" x-cloak @click="reset()"
+                            class="text-xs font-semibold text-gray-900 underline decoration-gold-500 decoration-2 underline-offset-4">Réinitialiser</button>
+                </div>
+            </div>
+
+            <div class="panel overflow-hidden">
+                <div class="h-0.5 transition-opacity" :class="loading ? 'animate-pulse bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300' : 'bg-transparent'"></div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="text-left">
+                            <tr>
+                                <th class="p-4">Facture</th>
+                                <th class="p-4">Client</th>
+                                <th class="p-4">Échéance</th>
+                                <th class="p-4 text-right">Reste</th>
+                                <th class="p-4">Statut</th>
+                                <th class="p-4"></th>
+                            </tr>
+                        </thead>
+                        <tbody x-html="rows" :class="loading ? 'opacity-50' : ''" class="transition-opacity"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div x-html="links" @click="paginate($event)"></div>
         </div>
-        <div>{{ $invoices->links() }}</div>
     </div>
+
+    @include('invoices._confirm')
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('invoicesTable', (init) => ({
+                f: init.filters, rows: init.rows, links: init.links, total: init.total,
+                loading: false, timer: null, ctrl: null,
+
+                get active() {
+                    return Object.entries(this.f).some(([k, v]) => k === 'tab' ? v !== 'tous' : (v !== '' && v !== null));
+                },
+                queue() { clearTimeout(this.timer); this.timer = setTimeout(() => this.load(1), 300); },
+                setTab(t) { this.f.tab = t; this.load(1); },
+                reset() {
+                    Object.keys(this.f).forEach(k => this.f[k] = '');
+                    this.f.tab = 'tous';
+                    this.load(1);
+                },
+
+                query(page) {
+                    const p = new URLSearchParams();
+                    Object.entries(this.f).forEach(([k, v]) => {
+                        if (v && !(k === 'tab' && v === 'tous')) p.set(k, v);
+                    });
+                    if (page > 1) p.set('page', page);
+                    const s = p.toString();
+                    return s ? '?' + s : '';
+                },
+
+                async load(page = 1) {
+                    if (this.ctrl) this.ctrl.abort();
+                    const mine = this.ctrl = new AbortController();
+                    this.loading = true;
+                    const qs = this.query(page);
+                    try {
+                        const r = await fetch(init.url + qs, {
+                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                            signal: mine.signal,
+                        });
+                        if (r.status === 401 || r.status === 419) { location.reload(); return; }
+                        if (!r.ok) throw new Error('HTTP ' + r.status);
+                        const d = await r.json();
+                        this.rows = d.rows; this.links = d.links; this.total = d.total;
+                        window.dispatchEvent(new CustomEvent('invoices-total', { detail: d.total }));
+                        history.replaceState(null, '', init.url + qs);
+                    } catch (e) {
+                        if (e.name !== 'AbortError') console.error(e);
+                    } finally {
+                        if (this.ctrl === mine) this.loading = false;
+                    }
+                },
+
+                paginate(e) {
+                    const a = e.target.closest('a[href]');
+                    if (!a) return;
+                    e.preventDefault();
+                    this.load(parseInt(new URL(a.href, location.origin).searchParams.get('page') || '1', 10));
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                },
+            }));
+        });
+    </script>
 </x-app-layout>

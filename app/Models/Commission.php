@@ -44,6 +44,7 @@ class Commission extends Model
             'payments_percent' => "$v % des paiements",
             'invoice_percent'  => "$v % de la facture",
             'fixed_per_sale'   => "$v DH par vente",
+            'product_percent'  => "$v % selon les produits",
             default            => $this->method,
         };
     }

@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Commission;
+use App\Models\Quote;
+use App\Models\Order;
+use App\Models\Client;
 use App\Models\CommissionRule;
 use App\Models\User;
 use App\Services\DashboardService;
@@ -22,7 +25,31 @@ class DashboardController extends Controller
         $period = $service->period($request);
         $data   = $service->for($cid)->summary($period);
 
+        // Compteurs opérationnels : mêmes conditions que le centre de validation.
+        // Pas de nouveau service, pas de requête IA, pas de changement financier.
+        $pendingQuotes = Quote::query()
+            ->where('requires_approval', true)
+            ->where('approval_status', 'pending')
+            ->whereIn('status', ['brouillon', 'envoye', 'accepte'])
+            ->whereDoesntHave('order')
+            ->count();
+        $pendingOrders = Order::query()
+            ->where('approval_status', 'pending')
+            ->where('status', 'nouvelle')
+            ->count();
+        $lateProspects = Client::query()
+            ->where('status', 'prospect')
+            ->whereHas('prospectDetail', fn ($q) => $q
+                ->where('do_not_contact', false)
+                ->whereNotNull('next_follow_up_at')
+                ->where('next_follow_up_at', '<=', now())
+                ->whereNotIn('stage', ['gagne', 'perdu']))
+            ->count();
+
         return view('admin.dashboard', $data + [
+            'pendingQuoteApprovals' => $pendingQuotes,
+            'pendingOrderApprovals' => $pendingOrders,
+            'lateProspectsCount' => $lateProspects,
             'period'        => $period,
             'cid'           => $cid,
             'commerciaux'   => User::where('role', 'commercial')->orderBy('name')->get(['id', 'name']),

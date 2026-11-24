@@ -1,0 +1,37 @@
+// Exemple d'appel depuis un contrôleur. Adapter les noms de vos champs existants.
+$pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.document', [
+    'template' => config('commerce.pdf_template', 'signature'),
+    'doc' => [
+        'type' => 'devis', // devis | facture | recu | commande | avoir | bon_livraison
+        'number' => 'DV-2026-0044',
+        'date' => '11/11/2026',
+        'valid_until' => '11/12/2026',
+        'client' => [
+            'name' => 'abd',
+            'address' => 'hay 2, casablanca',
+            'phone' => '',
+            'email' => '',
+            'ice' => '',
+        ],
+        'items' => [
+            [
+                'name' => 'Clavier sans fil',
+                'reference' => 'CLA-100',
+                'quantity' => 1,
+                'unit' => 'unité',
+                'unit_price' => 39,
+                'tax_rate' => 20,
+                'discount' => 0,
+                'total_ht' => 39,
+            ],
+        ],
+        'subtotal' => 39,
+        'discount' => 0,
+        'tax' => 7.80,
+        'total' => 46.80,
+        'notes' => 'Merci pour votre confiance.',
+        'terms' => 'Devis valable 30 jours.',
+    ],
+])->setPaper('a4', 'portrait');
+
+// return $pdf->stream('devis-DV-2026-0044.pdf');

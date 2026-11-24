@@ -75,6 +75,140 @@ class DeliveryController extends Controller
             ->with('success', 'Bon de livraison créé en brouillon.');
     }
 
+    /** Livraison en 1 clic depuis la page de la commande : crée le BL puis le valide */
+    public function quick(Request $request, Order $order, DocumentNumberService $numbers, StockService $stock)
+    {
+        $data = $request->validate([
+            'items'         => ['required', 'array'],
+            'items.*'       => ['nullable', 'numeric', 'min:0'],
+            'received_by'   => ['nullable', 'string', 'max:120'],
+            'delivery_date' => ['nullable', 'date'],
+        ]);
+
+        $delivery = DB::transaction(function () use ($order, $data) {
+            $o = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+
+            if ($o->status !== 'confirmee') {
+                throw ValidationException::withMessages(['status' => 'La commande doit être confirmée avant la livraison.']);
+            }
+
+            $o->load('items');
+            $rows = [];
+
+            foreach ($o->items as $item) {
+                $qty = (float) ($data['items'][$item->id] ?? 0);
+
+                if ($qty <= 0) {
+                    continue;
+                }
+
+                if ($qty > (float) $item->remainingQuantity()) {
+                    throw ValidationException::withMessages(['items' => 'Quantité invalide pour le produit ' . $item->name . '.']);
+                }
+
+                $rows[] = [
+                    'order_item_id' => $item->id,
+                    'product_id'    => $item->product_id,
+                    'name'          => $item->name,
+                    'sku'           => $item->sku,
+                    'unit'          => $item->unit,
+                    'quantity'      => $qty,
+                ];
+            }
+
+            if ($rows === []) {
+                throw ValidationException::withMessages(['items' => 'Indiquez au moins une quantité à livrer.']);
+            }
+
+            $d = Delivery::create([
+                'order_id'      => $o->id,
+                'client_id'     => $o->client_id,
+                'commercial_id' => $o->commercial_id,
+                'status'        => 'brouillon',
+                'delivery_date' => $data['delivery_date'] ?? today(),
+                'received_by'   => $data['received_by'] ?? null,
+            ]);
+
+            $d->items()->createMany($rows);
+
+            return $d;
+        });
+
+        // On réutilise validate() : numéro BL, stock, verrous... une seule logique
+        try {
+            $this->validate($delivery, $numbers, $stock);
+        } catch (\Throwable $e) {
+            $delivery->items()->delete();
+            $delivery->delete(); // pas de brouillon orphelin si la validation échoue (stock insuffisant...)
+            throw $e;
+        }
+
+        return redirect()
+            ->to($order->quote_id ? route('quotes.show', $order->quote_id) : route('orders.show', $order))
+            ->with('success', 'Livraison enregistrée.');
+    }
+
+    /**
+     * Livraison automatique : crée le BL avec TOUT le reste à livrer, puis le valide
+     * (numéro BL + stock gérés par validate()). Retourne null s'il n'y a rien à livrer.
+     */
+    public function autoDeliver(Order $order): ?Delivery
+    {
+        $delivery = DB::transaction(function () use ($order) {
+            $o = Order::whereKey($order->id)->lockForUpdate()->firstOrFail();
+
+            if ($o->status !== 'confirmee') {
+                return null;
+            }
+
+            $o->load('items');
+            $rows = [];
+
+            foreach ($o->items as $item) {
+                $remaining = (float) $item->remainingQuantity();
+                if ($remaining > 0) {
+                    $rows[] = [
+                        'order_item_id' => $item->id,
+                        'product_id'    => $item->product_id,
+                        'name'          => $item->name,
+                        'sku'           => $item->sku,
+                        'unit'          => $item->unit,
+                        'quantity'      => $remaining,
+                    ];
+                }
+            }
+
+            if ($rows === []) {
+                return null;
+            }
+
+            $d = Delivery::create([
+                'order_id'      => $o->id,
+                'client_id'     => $o->client_id,
+                'commercial_id' => $o->commercial_id,
+                'status'        => 'brouillon',
+                'delivery_date' => today(),
+            ]);
+            $d->items()->createMany($rows);
+
+            return $d;
+        });
+
+        if (! $delivery) {
+            return null;
+        }
+
+        try {
+            $this->validate($delivery, app(DocumentNumberService::class), app(StockService::class));
+        } catch (\Throwable $e) {
+            $delivery->items()->delete();
+            $delivery->delete(); // pas de brouillon orphelin (stock insuffisant...)
+            throw $e;
+        }
+
+        return $delivery->fresh();
+    }
+
     public function show(Delivery $delivery)
     {
         $delivery->load(['client', 'commercial', 'order', 'items.orderItem']);
@@ -163,6 +297,10 @@ class DeliveryController extends Controller
 
             if (! $order->stock_deducted) {
                 foreach ($items as $item) {
+                    if (! $item->product_id) {
+                        continue; // ligne libre : pas de stock
+                    }
+
                     $stock->move(
                         $item->product()->firstOrFail(),
                         'sortie',
@@ -201,6 +339,10 @@ class DeliveryController extends Controller
 
             if ($d->stock_moved) {
                 foreach ($d->items as $item) {
+                    if (! $item->product_id) {
+                        continue; // ligne libre : pas de stock
+                    }
+
                     $stock->move(
                         $item->product()->firstOrFail(),
                         'entree',
@@ -234,8 +376,6 @@ class DeliveryController extends Controller
     {
         $delivery->load(['order', 'client', 'items.product']);
 
-        return Pdf::loadView('deliveries.pdf', compact('delivery'))
-            ->setPaper('a4')
-            ->stream(($delivery->number ?? 'brouillon-' . $delivery->id) . '.pdf');
+        return redirect()->route('admin.pdf-studio.show', ['type' => 'delivery', 'id' => $delivery->id, 'download' => 1]); // HNB_ALL_TYPES_V34
     }
 }

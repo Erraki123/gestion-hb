@@ -1,0 +1,1 @@
+HN BLOOM V16 - Editorial PDF. No generated fake client data. Replace shared PDF header/style/footer only. Open the project root and run powershell -ExecutionPolicy Bypass -File .\HNB_PDF_EDITORIAL_V16\INSTALL_HNB_PDF_EDITORIAL_V16.ps1. See Backup printed by script.

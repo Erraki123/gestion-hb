@@ -1,13 +1,26 @@
-<x-app-layout>
-    <x-slot name="header"><h2>Modifier la commande</h2></x-slot>
-    <div class="py-8 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <form method="POST" action="{{ route('purchase-orders.update', $purchaseOrder) }}" class="panel p-6 space-y-4">
+@php $lbl = 'mb-1 block text-xs font-medium text-gray-600'; @endphp
+<x-app-layout dark-header>
+    <x-slot name="header">
+        <x-purchase-head title="Modifier la commande" :sub="($purchaseOrder->number ?: 'Brouillon #' . $purchaseOrder->id) . ' · ' . $purchaseOrder->supplier?->name"
+            :back="route('purchase-orders.show', $purchaseOrder)" back-label="Commande" />
+    </x-slot>
+
+    <div class="py-5 max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 space-y-4">
+        <x-purchase-flash />
+        <form method="POST" action="{{ route('purchase-orders.update', $purchaseOrder) }}" class="panel space-y-3 p-4">
             @csrf @method('PUT')
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div><x-input-label for="expected_date" value="Date prévue" /><x-text-input id="expected_date" name="expected_date" type="date" class="block w-full" :value="old('expected_date', optional($purchaseOrder->expected_date)->format('Y-m-d'))" /></div>
-                <div class="sm:col-span-2"><x-input-label for="notes" value="Notes" /><textarea id="notes" name="notes" rows="3" class="block w-full border-gray-300 rounded">{{ old('notes', $purchaseOrder->notes) }}</textarea></div>
+            <p class="text-xs text-gray-500">Les produits ne se modifient pas ici : pour changer les produits, supprimez le brouillon et recréez la commande.</p>
+            <div>
+                <label class="{{ $lbl }}">Livraison prévue</label>
+                <input type="date" name="expected_date" value="{{ old('expected_date', $purchaseOrder->expected_date?->format('Y-m-d')) }}" class="block w-full sm:w-64">
             </div>
-            <div class="flex justify-end"><button type="submit" class="px-3 py-2 bg-gold-500 text-gray-900 rounded">Enregistrer</button></div>
+            <div>
+                <label class="{{ $lbl }}">Notes</label>
+                <textarea name="notes" rows="3" class="block w-full">{{ old('notes', $purchaseOrder->notes) }}</textarea>
+            </div>
+            <div class="flex justify-end">
+                <button class="inline-flex items-center justify-center rounded-lg bg-gold-500 px-5 py-2 text-sm font-semibold text-gray-950 hover:bg-gold-400">Enregistrer</button>
+            </div>
         </form>
     </div>
 </x-app-layout>

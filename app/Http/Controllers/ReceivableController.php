@@ -12,13 +12,14 @@ class ReceivableController extends Controller
     {
         $invoices = Invoice::with('client')
             ->where('type', 'facture')
-            ->whereIn('status', ['emise', 'partiellement_payee'])
+            ->whereIn('status', [...Invoice::OPEN, 'cheque_en_attente'])
             ->when(auth()->user()->isAdmin() && $request->commercial_id,
                 fn ($q, $id) => $q->where('commercial_id', $id))
             ->get();
 
         $rows = $invoices->groupBy('client_id')->map(function ($group) {
             $b = ['not_due' => 0.0, 'd30' => 0.0, 'd60' => 0.0, 'd60p' => 0.0];
+            $cheques = round((float) $group->sum('amount_cheque_pending'), 2);
 
             foreach ($group as $inv) {
                 $bal  = $inv->balance();
@@ -37,8 +38,9 @@ class ReceivableController extends Controller
 
             return [
                 'client'  => $group->first()->client,
-                'count'   => $group->count(),
+                'count'   => $group->whereIn('status', Invoice::OPEN)->count(),
                 'buckets' => $b,
+                'cheques' => $cheques,
                 'total'   => array_sum($b),
             ];
         })->sortByDesc('total')->values();
@@ -49,6 +51,7 @@ class ReceivableController extends Controller
             'd60'     => $rows->sum('buckets.d60'),
             'd60p'    => $rows->sum('buckets.d60p'),
             'total'   => $rows->sum('total'),
+            'cheques' => $rows->sum('cheques'),
         ];
 
         $commerciaux = auth()->user()->isAdmin()

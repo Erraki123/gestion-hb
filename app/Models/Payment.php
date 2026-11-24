@@ -41,6 +41,7 @@ class Payment extends Model
     public function commercial()  { return $this->belongsTo(User::class, 'commercial_id')->withTrashed(); }
     public function user()        { return $this->belongsTo(User::class)->withTrashed(); }
     public function canceller()   { return $this->belongsTo(User::class, 'cancelled_by')->withTrashed(); }
+    public function documents()   { return $this->hasMany(PaymentDocument::class)->orderBy('id'); }
 
     public function isValid(): bool { return $this->status === 'valide'; }
 

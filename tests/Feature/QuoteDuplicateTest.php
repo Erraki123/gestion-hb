@@ -71,5 +71,35 @@ class QuoteDuplicateTest extends TestCase
 
         $response->assertRedirect();
         $this->assertDatabaseCount('quotes', 2);
+        $copy = Quote::where('id', '!=', $quote->id)->firstOrFail();
+        $this->assertSame('brouillon', $copy->status);
+        $this->assertSame($quote->client_id, $copy->client_id);
+        $this->assertSame($quote->commercial_id, $copy->commercial_id);
+        $this->assertNotSame($quote->number, $copy->number);
+        $this->assertCount(1, $copy->items);
+        $this->assertNull($copy->order);
+        $this->assertSame('brouillon', $quote->fresh()->status);
+    }
+
+    public function test_commercial_cannot_duplicate_a_quote_of_another_commercial(): void
+    {
+        $owner = User::factory()->create(['role' => 'commercial', 'is_active' => true]);
+        $other = User::factory()->create(['role' => 'commercial', 'is_active' => true]);
+        $client = Client::create(['commercial_id' => $owner->id, 'name' => 'Client privé', 'status' => 'actif']);
+        $quote = Quote::create([
+            'number' => 'DV-PRIVATE-01',
+            'client_id' => $client->id,
+            'commercial_id' => $owner->id,
+            'status' => 'brouillon',
+            'issue_date' => today(),
+            'valid_until' => today()->addDays(10),
+            'tax_rate' => 20,
+            'subtotal_ht' => 100,
+            'tax_amount' => 20,
+            'total_ttc' => 120,
+        ]);
+
+        $this->actingAs($other)->post("/quotes/{$quote->id}/duplicate")->assertNotFound();
+        $this->assertDatabaseCount('quotes', 1);
     }
 }

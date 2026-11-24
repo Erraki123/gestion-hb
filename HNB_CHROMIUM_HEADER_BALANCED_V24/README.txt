@@ -1,0 +1,1 @@
+Fixes V23 oversized HN logo and detached icon ribbon. Replaces no business logic. Install from Laravel root: powershell -ExecutionPolicy Bypass -File .\HNB_CHROMIUM_HEADER_BALANCED_V24\INSTALL_HNB_HEADER_V24.ps1

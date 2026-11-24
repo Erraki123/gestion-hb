@@ -1,88 +1,113 @@
 @php
-    $admin = auth()->user()->isAdmin();
+    $admin    = auth()->user()->isAdmin();
+    $hasLogo  = file_exists(public_path('logo.png'));
 
     $groups = [
         ['title' => null, 'items' => [
             ['Tableau de bord', route('dashboard'), 'dashboard', request()->routeIs('dashboard', 'admin.dashboard', 'commercial.dashboard')],
         ]],
         ['title' => 'Ventes', 'items' => [
-            ['Clients',    route('clients.index'),    'users',   request()->routeIs('clients.*')],
-            ['Devis',      route('quotes.index'),     'file',    request()->routeIs('quotes.*')],
-            ['Commandes',  route('orders.index'),     'cart',    request()->routeIs('orders.*')],
-            ['Livraisons', route('deliveries.index'), 'truck',   request()->routeIs('deliveries.*')],
-            ['Factures',   route('invoices.index'),   'receipt', request()->routeIs('invoices.*')],
-            ['Retours',    route('returns.index'),    'undo',    request()->routeIs('returns.*', 'invoices.returns.*')],
-        ]],
-        ['title' => 'Finance', 'items' => [
-            ['Paiements',   route('payments.index'),    'wallet',  request()->routeIs('payments.*')],
-            ['Créances',    route('receivables.index'), 'clock',   request()->routeIs('receivables.*')],
-            ['Commissions', route('commissions.index'), 'percent', request()->routeIs('commissions.*')],
-        ]],
-        ['title' => 'Catalogue', 'items' => [
-            ['Produits', route('products.index'), 'package', request()->routeIs('products.*', 'categories.*')],
-        ]],
-        ['title' => 'Analyse', 'items' => [
-            ['Rapports', route('reports.index'), 'chart', request()->routeIs('reports.*')],
+            ['Clients',   route('clients.index'),  'users',   request()->routeIs('clients.*')],
+            ['Prospection', route('prospects.index'), 'users', request()->routeIs('prospects.*')],
+            ['Mon agenda IA', route('hnb.routines.index'), 'clock', request()->routeIs('hnb.routines.*')],
+            ['Email', route('hnb.email.index'), 'file', request()->routeIs('hnb.email.*')],
+            ['WhatsApp', route('whatsapp.assistant.index'), 'file', request()->routeIs('whatsapp.assistant.*', 'admin.whatsapp.*')],
+            ['Commandes', route('quotes.index'),   'cart',    request()->routeIs('quotes.*', 'orders.*', 'deliveries.*')],
+            ['Factures',  route('invoices.index'), 'receipt', request()->routeIs('invoices.*', 'payments.*', 'receivables.*', 'returns.*')],
         ]],
     ];
 
+    $gestion = [
+        ['Produits', route('products.index'), 'package', request()->routeIs('products.*', 'categories.*')],
+    ];
     if ($admin) {
-        $groups[] = ['title' => 'Achats', 'items' => [
-            ['Fournisseurs', route('suppliers.index'), 'building', request()->routeIs('suppliers.*')],
-            ['Commandes fournisseur', route('purchase-orders.index'), 'clipboard', request()->routeIs('purchase-orders.*')],
-            ['Factures fournisseur', route('supplier-invoices.index'), 'receipt', request()->routeIs('supplier-invoices.*')],
-        ]];
+        $gestion[] = ['Achats', route('purchases.index'), 'clipboard', request()->routeIs('purchases.*', 'suppliers.*', 'purchase-orders.*', 'supplier-invoices.*', 'receipts.*')];
+    }
+    $gestion[] = ['Rapports', route('reports.index'), 'chart', request()->routeIs('reports.*')];
+    $gestion[] = $admin
+        ? ['Commerciaux',      route('admin.commerciaux.index'), 'briefcase', request()->routeIs('admin.commerciaux.*', 'commissions.*')]
+        : ['Mes commissions',  route('commissions.index'),       'percent',   request()->routeIs('commissions.*')];
+
+    $groups[] = ['title' => 'Gestion', 'items' => $gestion];
+
+    if ($admin) {
         $groups[] = ['title' => 'Administration', 'items' => [
-            ['Commerciaux',         route('admin.commerciaux.index'),  'briefcase', request()->routeIs('admin.commerciaux.*')],
-            ['Règles commission',   route('commission-rules.index'),   'sliders',   request()->routeIs('commission-rules.*')],
-            ['Paramètres',          route('settings.edit'),            'settings',  request()->routeIs('settings.*')],
-            ['Corbeille',           route('trash.index'),              'trash',     request()->routeIs('trash.*')],
-            ['Journal d\'activité', route('activity.index'),           'activity',  request()->routeIs('activity.*')],
-            ['Export comptable',    route('accounting.index'),         'download',  request()->routeIs('accounting.*')],
-            ['Système',             route('system.index'),             'shield',    request()->routeIs('system.*')],
+            ['Notifications', route('admin.direction.notifications.index'), 'clock', request()->routeIs('admin.direction.notifications.*')],
+            ['Validations',         route('admin.approvals.index'), 'shield', request()->routeIs('admin.approvals.*')],
+            ['Paramètres',          route('settings.edit'),    'settings', request()->routeIs('settings.*')],
+            ['Corbeille',           route('trash.index'),      'trash',    request()->routeIs('trash.*')],
+            ['Journal d\'activité', route('activity.index'),   'activity', request()->routeIs('activity.*')],
+            ['Export comptable',    route('accounting.index'), 'download', request()->routeIs('accounting.*')],
+            ['Système',             route('system.index'),     'shield',   request()->routeIs('system.*')],
         ]];
     }
 @endphp
 
-<div class="flex h-16 shrink-0 items-center gap-3 border-b border-white/5 px-5">
-    <x-brand-mark class="h-9 w-9 shrink-0" />
-    <div class="min-w-0 leading-tight">
-        <div class="truncate font-semibold text-white">{{ config('commerce.company.name') }}</div>
-        <div class="text-[10px] font-medium uppercase tracking-[.2em] text-gold-300">Gestion commerciale</div>
-    </div>
+{{-- Logo --}}
+<div class="flex h-14 shrink-0 items-center border-b border-white/10 px-5">
+    <a href="{{ route('dashboard') }}" class="flex min-w-0 items-center gap-3" aria-label="{{ config('commerce.company.name') }}">
+        @if ($hasLogo)
+            <img src="{{ asset('logo.png') }}" alt="{{ config('commerce.company.name') }}" class="h-9 w-auto max-w-[11rem] object-contain">
+        @else
+            <x-brand-mark class="h-8 w-8 shrink-0" />
+            <span class="truncate text-sm font-semibold text-white">{{ config('commerce.company.name') }}</span>
+        @endif
+    </a>
 </div>
 
-<nav class="flex-1 space-y-5 overflow-y-auto px-3 py-5">
-    @foreach ($groups as $g)
-        <div>
-            @if ($g['title'])
-                <div class="mb-2 px-3 text-[11px] font-semibold uppercase tracking-widest text-gray-500">{{ $g['title'] }}</div>
-            @endif
+{{-- Navigation --}}
+<nav class="flex-1 overflow-y-auto px-3 py-3" aria-label="Navigation principale">
+    <div class="space-y-4">
+        @foreach ($groups as $g)
+            <div>
+                @if ($g['title'])
+                    <div class="mb-1 px-3 text-[10px] font-semibold uppercase tracking-widest text-gray-500">{{ $g['title'] }}</div>
+                @endif
 
-            <div class="space-y-1">
-                @foreach ($g['items'] as [$label, $url, $icon, $active])
-                    <a href="{{ $url }}" @click="sidebar = false"
-                       class="group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition
-                              {{ $active
-                                  ? 'bg-gradient-to-r from-gold-500 to-gold-600 font-medium text-white shadow-lg shadow-gold-500/30'
-                                  : 'text-gray-400 hover:bg-white/5 hover:text-white' }}">
-                        <x-icon :name="$icon" class="h-5 w-5 {{ $active ? 'text-white' : 'text-gray-500 group-hover:text-gold-300' }}" />
-                        <span class="truncate">{{ $label }}</span>
-                    </a>
-                @endforeach
+                <div class="space-y-0.5">
+                    @foreach ($g['items'] as [$label, $url, $icon, $active])
+                        <a href="{{ $url }}" @click="sidebar = false"
+                           @if ($active) aria-current="page" @endif
+                           class="group flex items-center gap-3 rounded-r-lg border-l-2 px-3 py-2 text-sm transition
+                                  {{ $active
+                                      ? 'border-gold-500 bg-white/10 font-semibold text-white'
+                                      : 'border-transparent text-gray-400 hover:bg-white/5 hover:text-white' }}">
+                            <x-icon :name="$icon" class="h-[18px] w-[18px] shrink-0 {{ $active ? 'text-gold-300' : 'text-gray-500 group-hover:text-gold-300' }}" />
+                            <span class="truncate">{{ $label }}</span>
+                            @if ($admin && $label === 'Validations')
+                                @php
+                                    $approvalAlerts = \App\Models\Quote::where('approval_status', 'pending')->count()
+                                        + \App\Models\Order::where('approval_status', 'pending')->count();
+                                @endphp
+                                @if ($approvalAlerts > 0)
+                                    <span class="ml-auto rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-gray-950" aria-label="Demandes à valider">{{ $approvalAlerts }}</span>
+                                @endif
+                            @endif
+                            @if ($admin && $label === 'Prospection')
+                                @php
+                                    $lateFollowUps = \App\Models\ProspectDetail::where('do_not_contact', false)->where('next_follow_up_at','<=',now())->whereNotIn('stage',['gagne','perdu'])->count();
+                                @endphp
+                                @if ($lateFollowUps > 0)
+                                    <span class="ml-auto rounded-full bg-amber-400 px-2 py-0.5 text-[10px] font-bold text-gray-950" aria-label="Relances à traiter">{{ $lateFollowUps }}</span>
+                                @endif
+                            @endif
+                        </a>
+                    @endforeach
+                </div>
             </div>
-        </div>
-    @endforeach
+        @endforeach
+    </div>
 </nav>
 
-<div class="shrink-0 border-t border-white/5 p-3">
-    <a href="{{ route('profile.edit') }}" class="flex items-center gap-3 rounded-xl p-2 transition hover:bg-white/5">
-        <span class="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-gold-500 to-orange-500 text-sm font-semibold text-white">
+{{-- Profil --}}
+<div class="shrink-0 border-t border-white/10 p-3">
+    <a href="{{ route('profile.edit') }}" class="flex items-center gap-3 rounded-lg p-2 transition hover:bg-white/5">
+        <span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gold-500 text-xs font-semibold text-black">
             {{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 2)) }}
         </span>
         <span class="min-w-0 leading-tight">
-            <span class="block truncate text-sm font-semibold text-white">{{ auth()->user()->name }}</span>
-            <span class="block text-[11px] text-gray-400">{{ $admin ? 'Administrateur' : 'Commercial' }}</span>
+            <span class="block truncate text-sm font-medium text-white">{{ auth()->user()->name }}</span>
+            <span class="block text-[11px] text-gray-500">{{ $admin ? 'Administrateur' : 'Commercial' }}</span>
         </span>
     </a>
 </div>

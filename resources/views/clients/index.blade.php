@@ -1,123 +1,196 @@
-<x-app-layout>
+@php
+    $isAdmin = auth()->user()->isAdmin();
+    $filters = [
+        'name'          => (string) request('name', request('q', '')),
+        'phone'         => (string) request('phone', ''),
+        'city'          => (string) request('city', ''),
+        'status'        => (string) request('status', ''),
+        'commercial_id' => (string) request('commercial_id', ''),
+    ];
+@endphp
+
+<x-app-layout dark-header>
     <x-slot name="header">
-        <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="relative flex items-center justify-center text-center">
             <div>
-                <h2>Clients</h2>
-                <p class="mt-1 text-sm text-gray-500">{{ $clients->total() }} client(s)</p>
+                <h2 class="justify-center !text-lg !leading-tight">Clients</h2>
+                <p class="text-xs text-gray-500"
+                   x-data="{ n: {{ $clients->total() }} }"
+                   x-on:clients-total.window="n = $event.detail">
+                    <span x-text="n">{{ $clients->total() }}</span> client(s)
+                </p>
             </div>
-            <button type="button" x-data x-on:click="$dispatch('client-form', {})"
-                    class="inline-flex items-center gap-2 rounded-lg bg-gold-500 px-4 py-2.5 text-sm font-semibold text-gray-950 hover:bg-gold-400">
-                <span class="text-lg leading-none">+</span> Nouveau client
-            </button>
+
+            <a href="{{ route('clients.create') }}"
+               class="absolute right-0 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 rounded-lg border border-gold-300 bg-gold-100 px-3 py-1.5 text-xs font-semibold text-gray-900 shadow-sm transition hover:bg-gold-200">
+                <span class="text-base leading-none">+</span> Nouveau client
+            </a>
         </div>
     </x-slot>
 
-    <div class="py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    {{-- Affichage compact : header réduit + lignes du tableau plus serrées --}}
+    <style>
+        header, header > div { padding-top: .5rem !important; padding-bottom: .5rem !important; }
+
+        .clients-compact { padding-top: .75rem; padding-bottom: .75rem; }
+        .clients-compact thead th { padding: .5rem .75rem; font-size: .68rem; }
+        .clients-compact thead tr.bg-gold-50 th { padding: .35rem .5rem; }
+        .clients-compact tbody td { padding: .4rem .75rem; }
+        .clients-compact tbody td > div.flex { gap: .6rem; }
+        .clients-compact tbody td span.h-10 { height: 2rem; width: 2rem; font-size: .7rem; }
+        .clients-compact tbody .act { padding: .2rem .55rem; font-size: .7rem; }
+        .clients-compact tbody .text-xs { font-size: .68rem; line-height: 1rem; }
+        .clients-compact table { font-size: .8rem; }
+    </style>
+
+    <div class="clients-compact max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         @if (session('success'))
-            <div class="mb-4 rounded-xl border border-green-200 bg-green-100 p-3 text-sm text-green-800">{{ session('success') }}</div>
+            <div class="mb-3 rounded-xl border border-green-200 bg-green-100 p-2.5 text-sm text-green-800">{{ session('success') }}</div>
         @endif
 
-        {{-- Filtres --}}
-        <form method="GET" class="panel mb-5 flex flex-wrap items-center gap-3 p-3">
-            <div class="relative w-full sm:w-72">
-                <x-icon name="search" class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
-                <input type="text" name="q" value="{{ request('q') }}" placeholder="Rechercher un client…" class="w-full pl-10">
+        <div x-data="clientsTable(@js([
+                'url'     => route('clients.index'),
+                'filters' => $filters,
+                'rows'    => view('clients._rows', ['clients' => $clients])->render(),
+                'links'   => (string) $clients->links(),
+                'total'   => $clients->total(),
+            ]))">
+
+            <div class="panel overflow-hidden">
+                {{-- Barre de chargement --}}
+                <div class="h-0.5 transition-opacity" :class="loading ? 'animate-pulse bg-gradient-to-r from-gold-300 via-gold-500 to-gold-300' : 'bg-transparent'"></div>
+
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-sm">
+                        <thead class="text-left">
+                            <tr>
+                                <th class="p-4">Client</th>
+                                <th class="p-4">Téléphone</th>
+                                <th class="p-4">Ville</th>
+                                <th class="p-4">Statut</th>
+                                @if ($isAdmin) <th class="p-4">Commercial</th> @endif
+                                <th class="p-4 text-right">Actions</th>
+                            </tr>
+                            {{-- Un filtre par colonne : la liste se met à jour pendant la frappe --}}
+                            <tr class="bg-gold-50">
+                                <th class="p-2" style="border-bottom:1px solid #E8E2D2">
+                                    <input type="search" x-model="f.name" @input="queue()" placeholder="Nom, société, e-mail…"
+                                           aria-label="Filtrer par nom" class="w-full py-1.5 text-xs font-normal normal-case tracking-normal">
+                                </th>
+                                <th class="p-2" style="border-bottom:1px solid #E8E2D2">
+                                    <input type="search" x-model="f.phone" @input="queue()" placeholder="Téléphone…"
+                                           aria-label="Filtrer par téléphone" class="w-full py-1.5 text-xs font-normal normal-case tracking-normal">
+                                </th>
+                                <th class="p-2" style="border-bottom:1px solid #E8E2D2">
+                                    <input type="search" x-model="f.city" @input="queue()" placeholder="Ville…"
+                                           aria-label="Filtrer par ville" class="w-full py-1.5 text-xs font-normal normal-case tracking-normal">
+                                </th>
+                                <th class="p-2" style="border-bottom:1px solid #E8E2D2">
+                                    <select x-model="f.status" @change="load(1)" aria-label="Filtrer par statut"
+                                            class="w-full py-1.5 text-xs font-normal normal-case tracking-normal">
+                                        <option value="">Tous</option>
+                                        @foreach (['prospect', 'actif', 'inactif'] as $s)
+                                            <option value="{{ $s }}">{{ ucfirst($s) }}</option>
+                                        @endforeach
+                                    </select>
+                                </th>
+                                @if ($isAdmin)
+                                    <th class="p-2" style="border-bottom:1px solid #E8E2D2">
+                                        <select x-model="f.commercial_id" @change="load(1)" aria-label="Filtrer par commercial"
+                                                class="w-full py-1.5 text-xs font-normal normal-case tracking-normal">
+                                            <option value="">Tous</option>
+                                            @foreach ($commerciaux as $c)
+                                                <option value="{{ $c->id }}">{{ $c->name }}</option>
+                                            @endforeach
+                                        </select>
+                                    </th>
+                                @endif
+                                <th class="p-2 text-right" style="border-bottom:1px solid #E8E2D2">
+                                    <button type="button" x-show="active" x-cloak @click="reset()"
+                                            class="text-xs font-semibold normal-case tracking-normal text-gray-900 underline decoration-gold-500 decoration-2 underline-offset-4">
+                                        Réinitialiser
+                                    </button>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody x-html="rows" :class="loading ? 'opacity-50' : ''" class="transition-opacity"></tbody>
+                    </table>
+                </div>
             </div>
-            <select name="status">
-                <option value="">Tous les statuts</option>
-                @foreach (['prospect', 'actif', 'inactif'] as $s)
-                    <option value="{{ $s }}" @selected(request('status') === $s)>{{ ucfirst($s) }}</option>
-                @endforeach
-            </select>
-            @if (auth()->user()->isAdmin())
-                <select name="commercial_id">
-                    <option value="">Tous les commerciaux</option>
-                    @foreach ($commerciaux as $c)
-                        <option value="{{ $c->id }}" @selected(request('commercial_id') == $c->id)>{{ $c->name }}</option>
-                    @endforeach
-                </select>
-            @endif
-            <button class="rounded-lg bg-gold-500 px-5 py-2.5 text-sm font-semibold text-gray-950 hover:bg-gold-400">Filtrer</button>
-            @if (request()->hasAny(['q', 'status', 'commercial_id']))
-                <a href="{{ route('clients.index') }}" class="text-sm text-gray-500 hover:text-gray-900">Réinitialiser</a>
-            @endif
-        </form>
 
-        {{-- Tableau --}}
-        <div class="panel overflow-x-auto" x-data>
-            <table class="min-w-full text-sm">
-                <thead class="text-left">
-                    <tr>
-                        <th class="p-4">Client</th>
-                        <th class="p-4">Téléphone</th>
-                        <th class="p-4">Ville</th>
-                        <th class="p-4">Statut</th>
-                        @if (auth()->user()->isAdmin()) <th class="p-4">Commercial</th> @endif
-                        <th class="p-4 text-right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                @forelse ($clients as $client)
-                    @php
-                        $st = ['actif' => ['bg-green-100 text-green-800', 'bg-green-500'],
-                               'prospect' => ['bg-blue-100 text-blue-800', 'bg-blue-400']][$client->status]
-                              ?? ['bg-gray-200 text-gray-700', 'bg-gray-400'];
-                        $editData = [
-                            'action' => route('clients.update', $client),
-                            'method' => 'PUT',
-                            'f' => collect($client->only(['name', 'company', 'phone', 'email', 'address', 'city', 'ice', 'status', 'commercial_id', 'comment']))
-                                    ->map(fn ($v) => $v ?? '')->all(),
-                        ];
-                    @endphp
-                    <tr>
-                        <td class="p-4">
-                            <div class="flex items-center gap-3">
-                                <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-gold-500/40 bg-gold-500/10 text-sm font-semibold text-gold-400">
-                                    {{ mb_strtoupper(mb_substr($client->name, 0, 2)) }}
-                                </span>
-                                <div class="min-w-0">
-                                    <a href="{{ route('clients.show', $client) }}" class="block truncate font-semibold text-gray-900 hover:text-gold-400">{{ $client->name }}</a>
-                                    <div class="truncate text-xs text-gray-500">{{ $client->company ?: '—' }}</div>
-                                </div>
-                            </div>
-                        </td>
-                        <td class="p-4 text-gray-700">{{ $client->phone ?: '—' }}</td>
-                        <td class="p-4 text-gray-700">{{ $client->city ?: '—' }}</td>
-                        <td class="p-4">
-                            <span class="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs {{ $st[0] }}">
-                                <span class="h-1.5 w-1.5 rounded-full {{ $st[1] }}"></span>{{ ucfirst($client->status) }}
-                            </span>
-                        </td>
-                        @if (auth()->user()->isAdmin()) <td class="p-4 text-gray-700">{{ $client->commercial?->name ?: '—' }}</td> @endif
-                        <td class="p-4">
-                            <div class="flex items-center justify-end gap-2">
-                                <a href="{{ route('clients.show', $client) }}" class="act">Voir</a>
-                                <button type="button" class="act" x-on:click="$dispatch('client-form', @js($editData))">Modifier</button>
-                                <button type="button" class="act act-danger"
-                                        x-on:click="$dispatch('confirm-delete', @js([
-                                            'action' => route('clients.destroy', $client),
-                                            'title' => 'Supprimer ce client ?',
-                                            'text' => $client->name . ' sera supprimé définitivement.',
-                                        ]))">Supprimer</button>
-                            </div>
-                        </td>
-                    </tr>
-                @empty
-                    <tr>
-                        <td colspan="{{ auth()->user()->isAdmin() ? 6 : 5 }}" class="p-12 text-center">
-                            <x-icon name="users" class="mx-auto h-10 w-10 text-gray-400" />
-                            <p class="mt-3 font-medium text-gray-900">Aucun client trouvé</p>
-                            <p class="text-sm text-gray-500">Cliquez sur « Nouveau client » pour commencer.</p>
-                        </td>
-                    </tr>
-                @endforelse
-                </tbody>
-            </table>
+            <div class="mt-3" x-html="links" @click="paginate($event)"></div>
         </div>
-
-        <div class="mt-5">{{ $clients->links() }}</div>
     </div>
 
-    @include('clients._modal')
     @include('clients._confirm')
+
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.data('clientsTable', (init) => ({
+                f: init.filters,
+                rows: init.rows,
+                links: init.links,
+                total: init.total,
+                loading: false,
+                timer: null,
+                ctrl: null,
+
+                get active() {
+                    return Object.values(this.f).some(v => v !== '' && v !== null);
+                },
+
+                queue() {
+                    clearTimeout(this.timer);
+                    this.timer = setTimeout(() => this.load(1), 300);
+                },
+
+                reset() {
+                    Object.keys(this.f).forEach(k => this.f[k] = '');
+                    this.load(1);
+                },
+
+                query(page) {
+                    const p = new URLSearchParams();
+                    Object.entries(this.f).forEach(([k, v]) => { if (v) p.set(k, v); });
+                    if (page > 1) p.set('page', page);
+                    const s = p.toString();
+                    return s ? '?' + s : '';
+                },
+
+                async load(page = 1) {
+                    if (this.ctrl) this.ctrl.abort();
+                    const mine = this.ctrl = new AbortController();
+                    this.loading = true;
+                    const qs = this.query(page);
+                    try {
+                        const r = await fetch(init.url + qs, {
+                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                            signal: mine.signal,
+                        });
+                        if (r.status === 401 || r.status === 419) { location.reload(); return; }
+                        if (!r.ok) throw new Error('HTTP ' + r.status);
+                        const d = await r.json();
+                        this.rows = d.rows;
+                        this.links = d.links;
+                        this.total = d.total;
+                        window.dispatchEvent(new CustomEvent('clients-total', { detail: d.total }));
+                        history.replaceState(null, '', init.url + qs);
+                    } catch (e) {
+                        if (e.name !== 'AbortError') console.error(e);
+                    } finally {
+                        if (this.ctrl === mine) this.loading = false;
+                    }
+                },
+
+                paginate(e) {
+                    const a = e.target.closest('a[href]');
+                    if (!a) return;
+                    e.preventDefault();
+                    const page = parseInt(new URL(a.href, location.origin).searchParams.get('page') || '1', 10);
+                    this.load(page);
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                },
+            }));
+        });
+    </script>
 </x-app-layout>

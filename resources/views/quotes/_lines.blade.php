@@ -14,7 +14,7 @@
         <tbody>
         @foreach ($doc->items as $i)
             <tr>
-                <td class="p-4 text-gray-900">{{ $i->name }} <span class="text-xs text-gray-500">({{ $i->sku }})</span></td>
+                <td class="p-4 text-gray-900">{{ $i->name }} @if ($i->sku)<span class="text-xs text-gray-500">({{ $i->sku }})</span>@else<span class="text-xs text-gray-500">(ligne libre)</span>@endif</td>
                 <td class="p-4 text-gray-700">{{ $i->quantity + 0 }} {{ $i->unit }}</td>
                 <td class="p-4 text-gray-700">{{ \App\Support\Money::price($i->unit_price) }}</td>
                 <td class="p-4 text-gray-700">{{ $i->tax_rate + 0 }} %</td>

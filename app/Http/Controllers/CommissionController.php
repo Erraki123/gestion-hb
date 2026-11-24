@@ -75,7 +75,7 @@ class CommissionController extends Controller
     public function payoutCreate(Request $request)
     {
         $userId = $request->validate(['user_id' => ['required', 'integer']])['user_id'];
-        $commercial = User::where('role', 'commercial')->findOrFail($userId);
+        $commercial = User::withTrashed()->where('role', 'commercial')->findOrFail($userId);
 
         $pending = Commission::with(['invoice', 'payment'])
             ->where('user_id', $commercial->id)->where('status', 'en_attente')

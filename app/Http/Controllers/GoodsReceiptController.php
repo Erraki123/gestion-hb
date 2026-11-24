@@ -13,7 +13,7 @@ use Illuminate\Validation\ValidationException;
 
 class GoodsReceiptController extends Controller
 {
-    public function store(Request $request, PurchaseOrder $purchaseOrder)
+    public function store(Request $request, PurchaseOrder $purchaseOrder, GoodsReceiptService $service)
     {
         $data = $request->validate([
             'supplier_ref' => ['nullable', 'string', 'max:255'],
@@ -50,7 +50,27 @@ class GoodsReceiptController extends Controller
             return $draft;
         });
 
-        return redirect()->route('receipts.show', $receipt)->with('success', 'Réception créée.');
+        // Réception partielle : on s'arrête au brouillon pour ajuster les quantités.
+        if ($request->boolean('partial')) {
+            return redirect()->route('receipts.show', $receipt)
+                ->with('success', 'Réception créée : ajustez les quantités puis validez.');
+        }
+
+        // Réception complète : validation automatique (stock mis à jour).
+        try {
+            $service->validate($receipt);
+        } catch (ValidationException $e) {
+            return redirect()->route('receipts.show', $receipt)
+                ->with('error', (string) collect($e->errors())->flatten()->first());
+        } catch (\Throwable $e) {
+            report($e);
+
+            return redirect()->route('receipts.show', $receipt)
+                ->with('error', 'La réception est créée mais n\'a pas pu être validée. Vérifiez puis cliquez sur « Valider la réception ».');
+        }
+
+        return redirect()->route('purchase-orders.show', $purchaseOrder)
+            ->with('success', 'Marchandise reçue, stock mis à jour.');
     }
 
     public function show(GoodsReceipt $receipt)
